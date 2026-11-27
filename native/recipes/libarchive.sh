@@ -1,0 +1,10 @@
+# bsdtar だけを同梱する。zip、tar 系、7z、rar の読み込み、iso、cpio を扱う
+for dep in bzip2 xz zstd lz4; do need $dep; done
+
+fetch libarchive "$LIBARCHIVE_URL" "$LIBARCHIVE_SHA256"
+cmake_build "$SRC/libarchive" -DENABLE_TAR=ON -DENABLE_CPIO=OFF -DENABLE_CAT=OFF -DENABLE_UNZIP=OFF \
+    -DENABLE_TEST=OFF -DENABLE_OPENSSL=OFF -DENABLE_LIBXML2=OFF -DENABLE_EXPAT=OFF -DENABLE_LIBB2=OFF \
+    -DENABLE_ACL=OFF -DENABLE_XATTR=OFF -DENABLE_ICONV=OFF -DENABLE_PCREPOSIX=OFF -DENABLE_PCRE2POSIX=OFF \
+    -DENABLE_ZLIB=ON -DENABLE_BZip2=ON -DENABLE_LZMA=ON -DENABLE_ZSTD=ON -DENABLE_LZ4=ON \
+    -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS"
+install_tool "$SRC/libarchive/build-android/bin/bsdtar" libarchive bsdtar

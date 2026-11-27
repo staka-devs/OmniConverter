@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intending
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
@@ -68,6 +69,65 @@ class ConvertFlowE2E {
         assertTrue(head.decodeToString() == "ID3" || head[0] == 0xFF.toByte(), "MP3 ではありません")
     }
 
+    @Test
+    fun 同梱したlibheifで写真をHEICにする() {
+        val png = java.io.ByteArrayOutputStream().also { out ->
+            android.graphics.Bitmap.createBitmap(32, 32, android.graphics.Bitmap.Config.ARGB_8888)
+                .apply { eraseColor(android.graphics.Color.BLUE) }
+                .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        }.toByteArray()
+        val output = convertViaUi(createDownload("$name.png", png), "HEIC", "$name.heic")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(12).also { s.read(it) } }
+        // HEIF は ftyp ボックスで始まる
+        assertEquals("ftyp", head.copyOfRange(4, 8).decodeToString())
+    }
+
+    @Test
+    fun 同梱したbsdtarでzipをtar_gzに詰め替える() {
+        val zip = java.io.ByteArrayOutputStream().also { out ->
+            java.util.zip.ZipOutputStream(out).use { z ->
+                z.putNextEntry(java.util.zip.ZipEntry("a.txt"))
+                z.write("a".toByteArray())
+                z.closeEntry()
+            }
+        }.toByteArray()
+        val output = convertViaUi(createDownload("$name.zip", zip), "TAR.GZ", "$name.tar.gz")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(2).also { s.read(it) } }
+        // gzip の識別子
+        assertEquals(listOf(0x1f.toByte(), 0x8b.toByte()), head.toList())
+    }
+
+    @Test
+    fun 同梱したmagickで画像をWebPにする() {
+        val png = java.io.ByteArrayOutputStream().also { out ->
+            android.graphics.Bitmap.createBitmap(16, 16, android.graphics.Bitmap.Config.ARGB_8888)
+                .apply { eraseColor(android.graphics.Color.YELLOW) }
+                .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        }.toByteArray()
+        val output = convertViaUi(createDownload("$name.png", png), "WEBP", "$name.webp")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(12).also { s.read(it) } }
+        assertEquals("RIFF", head.copyOfRange(0, 4).decodeToString())
+        assertEquals("WEBP", head.copyOfRange(8, 12).decodeToString())
+    }
+
+    @Test
+    fun 同梱したmutoolでHTMLをPDFにする() {
+        val html = "<html><body><p>こんにちは</p></body></html>".toByteArray()
+        val output = convertViaUi(createDownload("$name.html", html), "PDF", "$name.pdf")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        assertEquals("%PDF", head.decodeToString())
+    }
+
+    @Test
+    fun pandocとmutoolをつないでMarkdownをPDFにする() {
+        // API 32 以前の x86_64 エミュレータの ARM 変換では pandoc の静的バイナリが動かない。ADR-0011
+        org.junit.Assume.assumeFalse(Build.SUPPORTED_ABIS[0].startsWith("x86") && Build.VERSION.SDK_INT < 33)
+        val md = "# 見出し\n\n本文です。\n".toByteArray()
+        val output = convertViaUi(createDownload("$name.md", md), "PDF", "$name.pdf")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        assertEquals("%PDF", head.decodeToString())
+    }
+
     /** 利用者と同じ操作で変換し、キューに完了が出たら出力ファイルを返す */
     private fun convertViaUi(source: Uri, target: String, outputName: String): Uri {
         intending(hasAction(Intent.ACTION_OPEN_DOCUMENT))
@@ -75,7 +135,10 @@ class ConvertFlowE2E {
 
         compose.onNodeWithText(context.getString(R.string.pick_files)).performClick()
         compose.onNodeWithText(context.getString(R.string.file_count, 1)).assertExists()
-        compose.onNodeWithText(target).performClick()
+        // 変換先が多いと一覧の外にあり、カテゴリ名と同じ文字のこともあるので、押せる要素まで送ってから押す
+        val chip = hasText(target) and androidx.compose.ui.test.hasClickAction()
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(chip)
+        compose.onNode(chip).performClick()
         compose.onNodeWithText(context.getString(R.string.convert_to, target)).performClick()
 
         // 完了するとキューに出力ファイル名が出る
