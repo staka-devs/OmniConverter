@@ -12,17 +12,6 @@
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync|mediaProcessing"
             tools:node="merge" />
-
-        <!-- WorkManager は合成ルートが渡す WorkerFactory で初期化する -->
-        <provider
-            android:name="androidx.startup.InitializationProvider"
-            android:authorities="${applicationId}.androidx-startup"
-            tools:node="merge">
-            <meta-data
-                android:name="androidx.work.WorkManagerInitializer"
-                android:value="androidx.startup"
-                tools:node="remove" />
-        </provider>
     </application>
 
 </manifest>

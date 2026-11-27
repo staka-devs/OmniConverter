@@ -1,6 +1,7 @@
 // 合成ルート。全モジュールを束ね、ここでだけ Infrastructure を配線する
 plugins {
     id("com.android.application")
+    id("omni.android-compose")
 }
 
 android {
@@ -38,4 +39,5 @@ dependencies {
         implementation(project(":infrastructure:engine-$it"))
     }
     implementation(project(":presentation"))
+    implementation(libs.activity.compose)
 }

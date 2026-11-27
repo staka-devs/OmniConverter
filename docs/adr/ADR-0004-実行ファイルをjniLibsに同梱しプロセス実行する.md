@@ -13,7 +13,7 @@ Android 10 以降は、アプリが書き込める場所にあるファイルを
 エンジンは CLI の実行ファイルとして組み込み、別プロセスで実行する。
 
 - 実行ファイルは `lib<名前>.so` という名前で各エンジンモジュールの jniLibs に置く。
-- `useLegacyPackaging` と `extractNativeLibs` を有効にし、インストール時に nativeLibraryDir へ展開させる。この場所は実行が許可されている。
+- `useLegacyPackaging` を有効にし、インストール時に nativeLibraryDir へ展開させる。この場所は実行が許可されている。
 - 起動は `NativeProcessRunner` が受け持つ。標準出力と標準エラーをまとめて読み、末尾のログだけを保持する。
 - 呼び出し元のコルーチンがキャンセルされたら、プロセスを強制終了する。
 

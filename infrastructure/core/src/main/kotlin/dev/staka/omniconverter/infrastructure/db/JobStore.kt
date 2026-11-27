@@ -64,6 +64,9 @@ interface JobDao {
     suspend fun requeueRunning()
 }
 
+/** Room を合成ルートから隠すための入口 */
+fun createJobDao(context: Context): JobDao = OmniDatabase.create(context).jobDao()
+
 @Database(entities = [JobEntity::class], version = 1, exportSchema = false)
 abstract class OmniDatabase : RoomDatabase() {
     abstract fun jobDao(): JobDao
