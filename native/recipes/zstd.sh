@@ -1,0 +1,2 @@
+fetch zstd "$ZSTD_URL" "$ZSTD_SHA256"
+cmake_build "$SRC/zstd/build/cmake" -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_TESTS=OFF

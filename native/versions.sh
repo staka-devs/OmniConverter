@@ -40,3 +40,18 @@ LIBAOM_SHA256=12c01dc731ed7b5a999e28120b45bf58a002ba3435a4ba2cfbc1e084a27c9c04
 
 LIBHEIF_URL=https://github.com/strukturag/libheif/releases/download/v1.23.7/libheif-1.23.7.tar.gz
 LIBHEIF_SHA256=f7483e818503ea6224c8863e4a56ac02c7089021a98472c811c12aa19faf2475
+
+BZIP2_URL=https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz
+BZIP2_SHA256=ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269
+
+XZ_URL=https://github.com/tukaani-project/xz/releases/download/v5.8.4/xz-5.8.4.tar.gz
+XZ_SHA256=0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9
+
+ZSTD_URL=https://github.com/facebook/zstd/releases/download/v1.6.0/zstd-1.6.0.tar.gz
+ZSTD_SHA256=2ba599ae2a257976278e7e71e998433a387bfd18aa7b78678229fd5d84f5e9b8
+
+LZ4_URL=https://github.com/lz4/lz4/archive/refs/tags/v1.11.1.tar.gz
+LZ4_SHA256=683fed08a844ad012196381e40badf80c0bbe4962959761416d41c9e67d77ec7
+
+LIBARCHIVE_URL=https://github.com/libarchive/libarchive/releases/download/v3.8.11/libarchive-3.8.11.tar.xz
+LIBARCHIVE_SHA256=a3dc0872b1b39da34dc18ef1b944f0f11ffd37425d70ae04be679279f1cf43d2

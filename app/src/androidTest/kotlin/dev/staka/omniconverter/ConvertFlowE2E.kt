@@ -81,6 +81,21 @@ class ConvertFlowE2E {
         assertEquals("ftyp", head.copyOfRange(4, 8).decodeToString())
     }
 
+    @Test
+    fun 同梱したbsdtarでzipをtar_gzに詰め替える() {
+        val zip = java.io.ByteArrayOutputStream().also { out ->
+            java.util.zip.ZipOutputStream(out).use { z ->
+                z.putNextEntry(java.util.zip.ZipEntry("a.txt"))
+                z.write("a".toByteArray())
+                z.closeEntry()
+            }
+        }.toByteArray()
+        val output = convertViaUi(createDownload("$name.zip", zip), "TAR.GZ", "$name.tar.gz")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(2).also { s.read(it) } }
+        // gzip の識別子
+        assertEquals(listOf(0x1f.toByte(), 0x8b.toByte()), head.toList())
+    }
+
     /** 利用者と同じ操作で変換し、キューに完了が出たら出力ファイルを返す */
     private fun convertViaUi(source: Uri, target: String, outputName: String): Uri {
         intending(hasAction(Intent.ACTION_OPEN_DOCUMENT))
