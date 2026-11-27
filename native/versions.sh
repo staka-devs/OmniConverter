@@ -79,3 +79,7 @@ IMAGEMAGICK_SHA256=5ba807e38a6bcb7c3c96a166485e270c5017aaa6b166f0440dc4b2badf6e6
 
 MUPDF_URL=https://mupdf.com/downloads/archive/mupdf-1.28.6-source.tar.gz
 MUPDF_SHA256=dc85000640a45d90ca9b77b061f6ca67cce0c4d4fbecf8819647baf573eef101
+
+# pandoc は Haskell 製で NDK でのビルドが現実的でないため、公式の静的バイナリを使う。ADR-0011
+PANDOC_URL=https://github.com/jgm/pandoc/releases/download/3.14/pandoc-3.14-linux-arm64.tar.gz
+PANDOC_SHA256=c692f3d78a415741bbbac4cdbbbe26fa7edca1f43d2301b982fbf4009cc8cf7f

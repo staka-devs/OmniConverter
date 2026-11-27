@@ -16,9 +16,10 @@ suspend fun NativeProcessRunner.convert(
     command: List<String>,
     workDir: File,
     output: Path,
+    environment: Map<String, String> = emptyMap(),
     onLine: (String) -> Unit = {},
 ): ConversionResult {
-    val result = run(command, workDir, onLine = onLine)
+    val result = run(command, workDir, environment, onLine)
     return if (result.exitCode == 0 && output.toFile().length() > 0) {
         ConversionResult.Success(output, result.log)
     } else {

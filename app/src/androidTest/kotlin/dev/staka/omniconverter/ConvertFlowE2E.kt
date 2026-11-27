@@ -117,6 +117,14 @@ class ConvertFlowE2E {
         assertEquals("%PDF", head.decodeToString())
     }
 
+    @Test
+    fun pandocとmutoolをつないでMarkdownをPDFにする() {
+        val md = "# 見出し\n\n本文です。\n".toByteArray()
+        val output = convertViaUi(createDownload("$name.md", md), "PDF", "$name.pdf")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        assertEquals("%PDF", head.decodeToString())
+    }
+
     /** 利用者と同じ操作で変換し、キューに完了が出たら出力ファイルを返す */
     private fun convertViaUi(source: Uri, target: String, outputName: String): Uri {
         intending(hasAction(Intent.ACTION_OPEN_DOCUMENT))

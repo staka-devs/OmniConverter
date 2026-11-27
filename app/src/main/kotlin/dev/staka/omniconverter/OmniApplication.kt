@@ -12,6 +12,7 @@ import dev.staka.omniconverter.engine.imagemagick.ImageMagickEngine
 import dev.staka.omniconverter.engine.libarchive.LibarchiveEngine
 import dev.staka.omniconverter.engine.libheif.LibheifEngine
 import dev.staka.omniconverter.engine.mupdf.MupdfEngine
+import dev.staka.omniconverter.engine.pandoc.PandocEngine
 import dev.staka.omniconverter.infrastructure.process.BinaryLocator
 import dev.staka.omniconverter.infrastructure.process.NativeProcessRunner
 import dev.staka.omniconverter.presentation.OmniApp
@@ -29,6 +30,7 @@ open class OmniApplication : Application(), Configuration.Provider {
             ImageMagickEngine({ locator.locate("magick") }, runner),
             LibarchiveEngine({ locator.locate("bsdtar") }, runner),
             MupdfEngine({ locator.locate("mutool") }, runner),
+            PandocEngine({ locator.locate("pandoc") }, runner),
         )
     }
 
