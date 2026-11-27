@@ -72,7 +72,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [app, presentation, 'infrastructure:core', 'infrastructure:engine-ffmpeg']
+        module:
+          - app
+          - presentation
+          - 'infrastructure:core'
+          - 'infrastructure:engine-ffmpeg'
+          - 'infrastructure:engine-imagemagick'
+          - 'infrastructure:engine-libheif'
+          - 'infrastructure:engine-libarchive'
+          - 'infrastructure:engine-mupdf'
+          - 'infrastructure:engine-pandoc'
     steps:
       - uses: actions/checkout@v7
       - name: Free disk space
