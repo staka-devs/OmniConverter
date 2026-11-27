@@ -2,6 +2,7 @@
 plugins {
     id("omni.android-library")
     id("omni.android-compose")
+    id("omni.android-test")
 }
 
 android {
@@ -17,4 +18,9 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.compose)
     debugImplementation(libs.compose.ui.tooling)
+
+    testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

@@ -6,10 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.work.Configuration
+import dev.staka.omniconverter.domain.engine.ConversionEngine
 import dev.staka.omniconverter.presentation.OmniApp
 
-class OmniApplication : Application(), Configuration.Provider {
-    val container by lazy { AppContainer(this) }
+open class OmniApplication : Application(), Configuration.Provider {
+    val container by lazy { AppContainer(this, engines()) }
+
+    /** 並び順がエンジンの優先順になる。E2E テストはここを差し替える */
+    protected open fun engines(): List<ConversionEngine> = emptyList()
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(container.workerFactory).build()

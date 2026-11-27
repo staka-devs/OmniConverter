@@ -9,7 +9,6 @@ android {
     defaultConfig {
         minSdk = 29
         ndk { abiFilters += "arm64-v8a" }
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

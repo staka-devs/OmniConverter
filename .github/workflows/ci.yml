@@ -30,3 +30,57 @@ jobs:
             **/build/reports/lint-results-*.html
             **/build/test-results/**/*.xml
           retention-days: 7
+
+  # 計装テストと E2E を、最小に近い API と最新 API のエミュレータで実行する
+  emulator-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v4
+      # エミュレータとシステムイメージは数 GB あり、毎回の取得はときどき失敗する。キャッシュし、再試行付きで入れる
+      - name: Restore emulator and system images
+        id: sdk-images
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/emulator
+            ${{ env.ANDROID_HOME }}/system-images
+          key: emulator-images-${{ runner.os }}-${{ hashFiles('build-logic/src/main/kotlin/omni.android-test.gradle.kts') }}
+      - name: Install emulator and system images
+        if: steps.sdk-images.outputs.cache-hit != 'true'
+        run: |
+          for attempt in 1 2 3 4; do
+            sdkmanager --install "emulator" "system-images;android-31;google_apis;x86_64" "system-images;android-37.0;google_apis;x86_64" && exit 0
+            echo "sdkmanager failed (attempt $attempt); retrying"
+            sleep $((attempt * 20))
+          done
+          exit 1
+      - name: Save emulator and system images
+        if: steps.sdk-images.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/emulator
+            ${{ env.ANDROID_HOME }}/system-images
+          key: ${{ steps.sdk-images.outputs.cache-primary-key }}
+      - uses: gradle/actions/setup-gradle@v6
+      # モジュールごとにエミュレータを起動するため、並列にするとランナーの資源が尽きる
+      - run: ./gradlew ciGroupDebugAndroidTest --no-parallel --max-workers=1 --continue -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --console=plain
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: emulator-test-reports
+          path: |
+            **/build/reports/androidTests/**
+            **/build/outputs/androidTest-results/**
+          retention-days: 7
