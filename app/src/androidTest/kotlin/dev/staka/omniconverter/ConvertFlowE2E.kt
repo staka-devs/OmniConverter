@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intending
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
@@ -132,7 +133,10 @@ class ConvertFlowE2E {
 
         compose.onNodeWithText(context.getString(R.string.pick_files)).performClick()
         compose.onNodeWithText(context.getString(R.string.file_count, 1)).assertExists()
-        compose.onNodeWithText(target).performClick()
+        // 変換先が多いと一覧の外にあり、カテゴリ名と同じ文字のこともあるので、押せる要素まで送ってから押す
+        val chip = hasText(target) and androidx.compose.ui.test.hasClickAction()
+        compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(chip)
+        compose.onNode(chip).performClick()
         compose.onNodeWithText(context.getString(R.string.convert_to, target)).performClick()
 
         // 完了するとキューに出力ファイル名が出る
