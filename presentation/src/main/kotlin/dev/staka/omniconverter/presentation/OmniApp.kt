@@ -11,6 +11,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -27,7 +28,11 @@ import dev.staka.omniconverter.application.EnqueueConversions
 import dev.staka.omniconverter.application.GetAvailableTargets
 import dev.staka.omniconverter.application.ListEngines
 import dev.staka.omniconverter.application.ObserveJobs
+import dev.staka.omniconverter.application.ObserveOutputDir
 import dev.staka.omniconverter.application.ObservePresets
+import dev.staka.omniconverter.application.RetainSharedFiles
+import dev.staka.omniconverter.application.SetOutputDir
+import dev.staka.omniconverter.domain.model.FileRef
 import dev.staka.omniconverter.application.SavePreset
 import dev.staka.omniconverter.presentation.command.CommandScreen
 import dev.staka.omniconverter.presentation.command.CommandViewModel
@@ -48,6 +53,9 @@ class UseCases(
     val observePresets: ObservePresets,
     val savePreset: SavePreset,
     val deletePreset: DeletePreset,
+    val retainShared: RetainSharedFiles,
+    val observeOutputDir: ObserveOutputDir,
+    val setOutputDir: SetOutputDir,
 )
 
 private enum class Tab(val label: Int, val icon: Int) {
@@ -56,9 +64,12 @@ private enum class Tab(val label: Int, val icon: Int) {
     COMMAND(R.string.tab_command, R.drawable.ic_terminal),
 }
 
+/** [shared] は他のアプリから共有されたファイル。受け取ったら変換画面に出す */
 @Composable
-fun OmniApp(useCases: UseCases) {
-    val convert = viewModel { ConvertViewModel(useCases.getTargets, useCases.enqueue) }
+fun OmniApp(useCases: UseCases, shared: List<FileRef> = emptyList()) {
+    val convert = viewModel {
+        ConvertViewModel(useCases.getTargets, useCases.enqueue, useCases.retainShared, useCases.observeOutputDir, useCases.setOutputDir)
+    }
     val queue = viewModel { QueueViewModel(useCases.observeJobs, useCases.cancelJob, useCases.clearFinished) }
     val command = viewModel {
         CommandViewModel(useCases.listEngines, useCases.observePresets, useCases.savePreset, useCases.deletePreset, useCases.enqueue)
@@ -66,6 +77,12 @@ fun OmniApp(useCases: UseCases) {
     var tab by rememberSaveable { mutableIntStateOf(Tab.CONVERT.ordinal) }
     // 通知が拒否されても変換は進むので、結果は待たない
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(shared) {
+        if (shared.isNotEmpty()) {
+            convert.receiveShared(shared)
+            tab = Tab.CONVERT.ordinal
+        }
+    }
 
     OmniTheme {
         Scaffold(
@@ -86,7 +103,10 @@ fun OmniApp(useCases: UseCases) {
             when (Tab.entries[tab]) {
                 Tab.CONVERT -> {
                     val state by convert.state.collectAsStateWithLifecycle()
+                    val outputDir by convert.outputDir.collectAsStateWithLifecycle()
                     ConvertScreen(
+                        outputDir = outputDir,
+                        onOutputDir = convert::chooseOutputDir,
                         state = state,
                         onFilesPicked = convert::setFiles,
                         onSelect = convert::select,

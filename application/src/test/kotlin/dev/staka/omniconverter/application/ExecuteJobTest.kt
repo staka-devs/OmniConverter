@@ -31,6 +31,14 @@ class ExecuteJobTest {
         assertEquals("note.pdf", job.output?.name)
         assertEquals("src>pandoc>mupdf", files.exported["note.pdf"])
         assertEquals(1, files.deleted.size)
+        assertEquals(listOf("src"), files.released.map { it.uri })
+    }
+
+    @Test
+    fun 共有されたファイルは手元に写してから登録する() = runTest {
+        val kept = RetainSharedFiles(files)(listOf(FileRef("content://share/1", "a.png")))
+        assertEquals(listOf("kept://content://share/1"), kept.map { it.uri })
+        assertEquals("a.png", kept.single().name)
     }
 
     @Test

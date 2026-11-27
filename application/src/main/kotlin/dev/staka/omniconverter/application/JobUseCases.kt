@@ -7,7 +7,9 @@ import dev.staka.omniconverter.domain.model.Formats
 import dev.staka.omniconverter.domain.model.JobStatus
 import dev.staka.omniconverter.domain.model.RawCommand
 import dev.staka.omniconverter.domain.port.ConversionJobRepository
+import dev.staka.omniconverter.domain.port.FileGateway
 import dev.staka.omniconverter.domain.port.JobScheduler
+import dev.staka.omniconverter.domain.port.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -54,10 +56,28 @@ class CancelJob(
     }
 }
 
-/** 終わったジョブを一覧から消す */
-class ClearFinishedJobs(private val repository: ConversionJobRepository) {
+/** 終わったジョブを一覧から消す。実行前に取り消したジョブの写しもここで消す */
+class ClearFinishedJobs(
+    private val repository: ConversionJobRepository,
+    private val files: FileGateway,
+) {
     suspend operator fun invoke(jobs: List<ConversionJob>) {
-        jobs.filter { it.status != JobStatus.QUEUED && it.status != JobStatus.RUNNING }
-            .forEach { repository.delete(it.id) }
+        jobs.filter { it.status != JobStatus.QUEUED && it.status != JobStatus.RUNNING }.forEach {
+            repository.delete(it.id)
+            files.release(it.source)
+        }
     }
+}
+
+/** 他のアプリから共有されたファイルを、変換が終わるまで読めるよう手元に写す */
+class RetainSharedFiles(private val files: FileGateway) {
+    suspend operator fun invoke(sources: List<FileRef>): List<FileRef> = sources.map { files.retain(it) }
+}
+
+class ObserveOutputDir(private val settings: SettingsRepository) {
+    operator fun invoke(): Flow<FileRef?> = settings.outputDir()
+}
+
+class SetOutputDir(private val settings: SettingsRepository) {
+    suspend operator fun invoke(dir: FileRef?) = settings.setOutputDir(dir)
 }

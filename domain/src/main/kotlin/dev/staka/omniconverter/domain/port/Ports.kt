@@ -30,6 +30,19 @@ interface FileGateway {
     suspend fun newWorkDir(): Path
 
     suspend fun deleteWorkDir(dir: Path)
+
+    /** 一時的にしか読めないファイルを、変換が終わるまで読めるよう手元に写す */
+    suspend fun retain(source: FileRef): FileRef
+
+    /** [retain] で写したファイルなら消す。それ以外は何もしない */
+    suspend fun release(source: FileRef)
+}
+
+/** 利用者の設定 */
+interface SettingsRepository {
+    /** 出力先のフォルダ。null なら既定の場所 */
+    fun outputDir(): Flow<FileRef?>
+    suspend fun setOutputDir(dir: FileRef?)
 }
 
 interface PresetRepository {

@@ -72,4 +72,9 @@ class FakeFiles : FileGateway {
     override suspend fun deleteWorkDir(dir: Path) {
         deleted.add(dir)
     }
+    val released = mutableListOf<FileRef>()
+    override suspend fun retain(source: FileRef) = source.copy(uri = "kept://${source.uri}")
+    override suspend fun release(source: FileRef) {
+        released.add(source)
+    }
 }

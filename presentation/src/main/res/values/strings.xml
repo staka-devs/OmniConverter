@@ -32,4 +32,7 @@
     <string name="error_input">{input} がありません</string>
     <string name="error_output">{output} がありません</string>
     <string name="error_extension">拡張子が正しくありません</string>
+    <string name="output_dir">出力先</string>
+    <string name="default_output_dir">Download/OmniConverter</string>
+    <string name="reset_output_dir">出力先を既定に戻す</string>
 </resources>

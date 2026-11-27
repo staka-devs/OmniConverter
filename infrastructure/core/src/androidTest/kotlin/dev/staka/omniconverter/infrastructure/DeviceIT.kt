@@ -84,6 +84,27 @@ class DeviceIT {
     }
 
     @Test
+    fun 共有の写しは変換後に消し写し以外は消さない() = runBlocking {
+        val src = Files.createTempFile(context.cacheDir.toPath(), "share", ".txt").also { it.toFile().writeText("共有") }
+        val shared = files.export(src, "share-${System.nanoTime()}.txt").also { created += Uri.parse(it.uri) }
+
+        val kept = files.retain(shared)
+        val keptFile = File(Uri.parse(kept.uri).path!!)
+        assertEquals("共有", keptFile.readText())
+        assertEquals(shared.name, kept.name)
+
+        // 写しの置き場の外を指す file URI は消さない
+        val outside = File(context.filesDir, "keep-me.txt").apply { writeText("x") }
+        files.release(dev.staka.omniconverter.domain.model.FileRef(Uri.fromFile(outside).toString(), outside.name))
+        assertTrue(outside.exists())
+        files.release(shared)
+
+        files.release(kept)
+        assertFalse(keptFile.exists())
+        outside.delete()
+    }
+
+    @Test
     fun ワーカーが待機中のジョブを最後まで処理する() = runBlocking {
         val db = Room.inMemoryDatabaseBuilder(context, OmniDatabase::class.java).build()
         try {
@@ -99,8 +120,16 @@ class DeviceIT {
             val source = files.export(src, "worker-${System.nanoTime()}.txt").also { created += Uri.parse(it.uri) }
             repo.upsert(listOf(ConversionJob("j1", source, Formats.of("md")), ConversionJob("j2", source, Formats.of("md"))))
 
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
+                    .grantRuntimePermission(context.packageName, android.Manifest.permission.POST_NOTIFICATIONS)
+            }
             val worker = TestListenableWorkerBuilder<ConversionWorker>(context).setWorkerFactory(factory).build()
             assertTrue(worker.doWork() is ListenableWorker.Result.Success)
+
+            // キューが空になったら完了を知らせる
+            val notices = context.getSystemService(android.app.NotificationManager::class.java).activeNotifications
+            assertTrue(notices.any { it.id == 2 }, "完了の通知がありません")
 
             listOf("j1", "j2").forEach { id ->
                 val job = repo.get(id)!!

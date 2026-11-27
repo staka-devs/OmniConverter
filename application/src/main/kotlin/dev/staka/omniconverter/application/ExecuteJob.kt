@@ -51,7 +51,10 @@ class ExecuteJob(
         } catch (e: Exception) {
             save(running.copy(status = JobStatus.FAILED, progress = null, error = e.message ?: e.toString()))
         } finally {
-            withContext(NonCancellable) { files.deleteWorkDir(workDir) }
+            withContext(NonCancellable) {
+                files.deleteWorkDir(workDir)
+                files.release(job.source)
+            }
         }
     }
 
