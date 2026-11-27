@@ -74,7 +74,8 @@ jobs:
             ${{ env.ANDROID_HOME }}/system-images
           key: ${{ steps.sdk-images.outputs.cache-primary-key }}
       - uses: gradle/actions/setup-gradle@v6
-      - run: ./gradlew ciGroupDebugAndroidTest -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --console=plain
+      # モジュールごとにエミュレータを起動するため、並列にするとランナーの資源が尽きる
+      - run: ./gradlew ciGroupDebugAndroidTest --no-parallel --max-workers=1 --continue -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --console=plain
       - uses: actions/upload-artifact@v7
         if: always()
         with:
