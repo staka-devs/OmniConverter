@@ -5,11 +5,13 @@ plugins {
 
 android {
     namespace = "dev.staka.omniconverter"
-    compileSdk = 36
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
     defaultConfig {
         applicationId = "dev.staka.omniconverter"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
         ndk { abiFilters += "arm64-v8a" }

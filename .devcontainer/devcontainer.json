@@ -1,0 +1,5 @@
+{
+  "name": "OmniConverter Android build",
+  "build": { "dockerfile": "Dockerfile" },
+  "mounts": ["source=omniconverter-gradle,target=/root/.gradle,type=volume"]
+}

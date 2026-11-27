@@ -3,7 +3,9 @@ plugins {
 }
 
 android {
-    compileSdk = 36
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
     defaultConfig {
         minSdk = 29
         ndk { abiFilters += "arm64-v8a" }
