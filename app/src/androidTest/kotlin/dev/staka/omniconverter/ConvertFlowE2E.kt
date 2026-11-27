@@ -120,6 +120,8 @@ class ConvertFlowE2E {
 
     @Test
     fun pandocとmutoolをつないでMarkdownをPDFにする() {
+        // API 32 以前の x86_64 エミュレータの ARM 変換では pandoc の静的バイナリが動かない。ADR-0011
+        org.junit.Assume.assumeFalse(Build.SUPPORTED_ABIS[0].startsWith("x86") && Build.VERSION.SDK_INT < 33)
         val md = "# 見出し\n\n本文です。\n".toByteArray()
         val output = convertViaUi(createDownload("$name.md", md), "PDF", "$name.pdf")
         val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }

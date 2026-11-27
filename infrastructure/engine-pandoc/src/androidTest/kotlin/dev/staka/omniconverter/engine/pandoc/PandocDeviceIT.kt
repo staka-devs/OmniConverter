@@ -19,6 +19,13 @@ import kotlin.test.fail
 /** 公式の静的バイナリの pandoc が端末で動き、日本語の文書を変換できることを確かめる */
 @RunWith(AndroidJUnit4::class)
 class PandocDeviceIT {
+    /** x86_64 の古いエミュレータの ARM 変換は、静的バイナリのシグナル設定に対応しない。実機では起きない。ADR-0011 */
+    @org.junit.Before
+    fun requireNativeArm() {
+        val translated = android.os.Build.SUPPORTED_ABIS[0].startsWith("x86") && android.os.Build.VERSION.SDK_INT < 33
+        org.junit.Assume.assumeFalse("API 32 以前の ARM 変換では静的バイナリが動かない", translated)
+    }
+
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val dir = File(context.cacheDir, "pandoc-it").apply { mkdirs() }
     private val engine = PandocEngine({ BinaryLocator(context).locate("pandoc") }, NativeProcessRunner())
