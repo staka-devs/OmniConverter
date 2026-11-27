@@ -8,8 +8,8 @@ lifecycle = "2.11.1"
 navigation = "2.10.2"
 room = "2.8.5"
 work = "2.12.0"
-koin-bom = "4.2.2"
 ksp = "2.3.14"
+orgjson = "20260814"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -26,10 +26,7 @@ navigation-compose = { module = "androidx.navigation:navigation-compose", versio
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
-koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin-bom" }
-koin-android = { module = "io.insert-koin:koin-android" }
-koin-androidx-compose = { module = "io.insert-koin:koin-androidx-compose" }
-koin-androidx-workmanager = { module = "io.insert-koin:koin-androidx-workmanager" }
+orgjson = { module = "org.json:json", version.ref = "orgjson" }
 # build-logic
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }

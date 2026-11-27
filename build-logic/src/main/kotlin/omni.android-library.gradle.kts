@@ -3,7 +3,9 @@ plugins {
 }
 
 android {
-    compileSdk = 36
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
     defaultConfig {
         minSdk = 29
         ndk { abiFilters += "arm64-v8a" }
@@ -17,4 +19,8 @@ android {
 
 kotlin {
     compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+}
+
+dependencies {
+    "testImplementation"(kotlin("test-junit"))
 }

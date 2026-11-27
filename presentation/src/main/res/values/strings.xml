@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_convert">変換</string>
+    <string name="tab_queue">キュー</string>
+    <string name="pick_files">ファイルを選ぶ</string>
+    <string name="file_count">%1$d 個のファイル</string>
+    <string name="clear_selection">選択を解除</string>
+    <string name="no_targets">変換できる形式がありません</string>
+    <string name="convert_to">%1$s に変換</string>
+    <string name="category_video">動画</string>
+    <string name="category_audio">音声</string>
+    <string name="category_image">画像</string>
+    <string name="category_document">文書</string>
+    <string name="category_pdf">PDF</string>
+    <string name="category_archive">アーカイブ</string>
+    <string name="queue_empty">変換待ちはありません</string>
+    <string name="clear_finished">完了を消す</string>
+    <string name="cancel">キャンセル</string>
+    <string name="status_queued">待機中</string>
+    <string name="status_cancelled">キャンセル済み</string>
+    <string name="status_succeeded">完了</string>
+    <string name="status_failed">失敗</string>
+</resources>

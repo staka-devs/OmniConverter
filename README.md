@@ -15,9 +15,14 @@ Android 10 以降、arm64-v8a 端末
 
 ## ビルド
 
+Android SDK はコンテナに入っています。手元に SDK を用意する必要はありません。
+
 ```sh
-./gradlew build
+docker build -t omniconverter-android .devcontainer
+docker run --rm -v "$PWD":/workspace -v omniconverter-gradle:/root/.gradle -w /workspace omniconverter-android ./gradlew build lint
 ```
+
+VS Code などで Dev Container として開いても同じ環境になります。
 
 ネイティブエンジンのビルド手順は `native/` を参照してください。
 

@@ -1,15 +1,18 @@
 // 合成ルート。全モジュールを束ね、ここでだけ Infrastructure を配線する
 plugins {
     id("com.android.application")
+    id("omni.android-compose")
 }
 
 android {
     namespace = "dev.staka.omniconverter"
-    compileSdk = 36
+    compileSdk {
+        version = release(37) { minorApiLevel = 2 }
+    }
     defaultConfig {
         applicationId = "dev.staka.omniconverter"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
         ndk { abiFilters += "arm64-v8a" }
@@ -36,4 +39,5 @@ dependencies {
         implementation(project(":infrastructure:engine-$it"))
     }
     implementation(project(":presentation"))
+    implementation(libs.activity.compose)
 }
