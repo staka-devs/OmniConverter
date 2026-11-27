@@ -7,13 +7,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.work.Configuration
 import dev.staka.omniconverter.domain.engine.ConversionEngine
+import dev.staka.omniconverter.engine.ffmpeg.FfmpegEngine
+import dev.staka.omniconverter.infrastructure.process.BinaryLocator
+import dev.staka.omniconverter.infrastructure.process.NativeProcessRunner
 import dev.staka.omniconverter.presentation.OmniApp
 
 open class OmniApplication : Application(), Configuration.Provider {
     val container by lazy { AppContainer(this, engines()) }
 
-    /** 並び順がエンジンの優先順になる。E2E テストはここを差し替える */
-    protected open fun engines(): List<ConversionEngine> = emptyList()
+    /** 並び順がエンジンの優先順になる。E2E テストはここにテスト用エンジンを足す */
+    protected open fun engines(): List<ConversionEngine> {
+        val locator = BinaryLocator(this)
+        val runner = NativeProcessRunner()
+        return listOf(
+            FfmpegEngine({ locator.locate("ffmpeg") }, runner),
+        )
+    }
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(container.workerFactory).build()

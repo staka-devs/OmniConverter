@@ -36,7 +36,8 @@ log() { printf '\n==> %s\n' "$*"; }
 
 # fetch <名前> <URL> <sha256>: 取得してハッシュを検証し、$SRC/<名前> に展開し直す
 fetch() {
-    local name=$1 url=$2 sha=$3 file="$DL/${url##*/}"
+    local name=$1 url=$2 sha=$3
+    local file="$DL/${url##*/}"
     [ -f "$file" ] || curl -fsSL --retry 3 -o "$file" "$url"
     echo "$sha  $file" | sha256sum -c - >/dev/null || { echo "ハッシュが一致しません: $file" >&2; rm -f "$file"; exit 1; }
     rm -rf "${SRC:?}/$name" && mkdir -p "$SRC/$name"
@@ -86,20 +87,21 @@ INI
 
 # install_tool <実行ファイル> <エンジン> <名前>: lib<名前>.so としてエンジンの jniLibs へ置く。ADR-0004
 install_tool() {
-    local bin=$1 engine=$2 name=$3 dest="$OUT/$2/arm64-v8a"
+    local bin=$1 name=$3
+    local dest="$OUT/$2/arm64-v8a"
     mkdir -p "$dest"
     "$STRIP" -o "$dest/lib$name.so" "$bin"
     verify_tool "$dest/lib$name.so"
 }
 
-# 端末で単体実行できる形かを確かめる。aarch64 の PIE で、NDK 以外の共有ライブラリを要求しないこと
+# 端末で単体実行できる形かを確かめる。aarch64 の PIE で、端末に必ずある NDK のシステムライブラリだけに依存すること
 verify_tool() {
     local f=$1
     file -L "$f" | grep -q 'ARM aarch64' || { echo "aarch64 ではありません: $f" >&2; exit 1; }
     file -L "$f" | grep -q 'pie executable\|shared object' || { echo "PIE ではありません: $f" >&2; exit 1; }
     local needed
     needed=$("$TOOLCHAIN/bin/llvm-readelf" -d "$f" | sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' \
-        | grep -vxE 'libc\.so|libm\.so|libdl\.so|liblog\.so|libz\.so|libandroid\.so' || true)
+        | grep -vxE 'libc\.so|libm\.so|libdl\.so|liblog\.so|libz\.so|libandroid\.so|libmediandk\.so' || true)
     [ -z "$needed" ] || { echo "同梱されない共有ライブラリに依存しています: $needed" >&2; exit 1; }
     log "OK $(basename "$f") $(du -h "$f" | cut -f1)"
 }

@@ -10,10 +10,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ネイティブエンジンをソースからビルドする。レシピと版が変わらない限りキャッシュを使う。ADR-0005
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - name: Restore native engines
+        id: native-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: native/out
+          key: native-${{ hashFiles('native/Dockerfile', 'native/build.sh', 'native/versions.sh', 'native/lib/**', 'native/recipes/**') }}
+      - name: Build native engines
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: native/run.sh ffmpeg
+      - name: Save native engines
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: native/out
+          key: ${{ steps.native-cache.outputs.cache-primary-key }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-out
+          path: native/out
+          retention-days: 3
+
   android-build:
+    needs: native
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: native-out
+          path: native/out
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -32,11 +64,23 @@ jobs:
           retention-days: 7
 
   # 計装テストと E2E を、最小に近い API と最新 API のエミュレータで実行する
-  emulator-tests:
+  # 1 台のランナーで全モジュールを回すと資源が尽きるので、モジュールごとにランナーを分ける
+  device-tests:
+    needs: native
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [app, presentation, 'infrastructure:core', 'infrastructure:engine-ffmpeg']
     steps:
       - uses: actions/checkout@v7
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost /usr/local/lib/android/sdk/ndk "$AGENT_TOOLSDIRECTORY"
+      - uses: actions/download-artifact@v7
+        with:
+          name: native-out
+          path: native/out
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -75,12 +119,20 @@ jobs:
           key: ${{ steps.sdk-images.outputs.cache-primary-key }}
       - uses: gradle/actions/setup-gradle@v6
       # モジュールごとにエミュレータを起動するため、並列にするとランナーの資源が尽きる
-      - run: ./gradlew ciGroupDebugAndroidTest --no-parallel --max-workers=1 --continue -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --console=plain
+      - run: ./gradlew :${{ matrix.module }}:ciGroupDebugAndroidTest --continue -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect --console=plain
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: emulator-test-reports
+          name: device-test-reports-${{ strategy.job-index }}
           path: |
             **/build/reports/androidTests/**
             **/build/outputs/androidTest-results/**
           retention-days: 7
+
+  # ブランチ保護の必須チェック。全モジュールの結果をまとめる
+  emulator-tests:
+    needs: device-tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.device-tests.result }}" = success
