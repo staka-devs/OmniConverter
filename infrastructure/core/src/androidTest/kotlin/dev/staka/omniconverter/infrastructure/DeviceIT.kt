@@ -84,7 +84,7 @@ class DeviceIT {
     }
 
     @Test
-    fun 共有の写しは変換後に消し写し以外は消さない() = runBlocking {
+    fun 共有の写しは変換後に消し写し以外は消さない(): Unit = runBlocking {
         val src = Files.createTempFile(context.cacheDir.toPath(), "share", ".txt").also { it.toFile().writeText("共有") }
         val shared = files.export(src, "share-${System.nanoTime()}.txt").also { created += Uri.parse(it.uri) }
 
