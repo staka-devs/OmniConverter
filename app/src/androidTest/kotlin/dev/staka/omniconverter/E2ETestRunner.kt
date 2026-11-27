@@ -18,9 +18,9 @@ class E2ETestRunner : AndroidJUnitRunner() {
         super.newApplication(cl, E2EApplication::class.java.name, context)
 }
 
-/** 実エンジンの無い変換経路を、テスト用エンジンで端から端まで通す */
+/** 本物のエンジンに、ネイティブに依存しないテスト用エンジンを足す */
 class E2EApplication : OmniApplication() {
-    override fun engines(): List<ConversionEngine> = listOf(UpperCaseEngine())
+    override fun engines(): List<ConversionEngine> = super.engines() + UpperCaseEngine()
 }
 
 class UpperCaseEngine : ConversionEngine {

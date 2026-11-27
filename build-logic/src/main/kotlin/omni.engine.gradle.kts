@@ -8,6 +8,8 @@ val engineName = project.name.removePrefix("engine-")
 android {
     namespace = "dev.staka.omniconverter.engine.${engineName}"
     sourceSets.getByName("main").jniLibs.srcDir(rootProject.file("native/out/$engineName"))
+    // 計装テストの APK でも、同梱した実行ファイルを nativeLibraryDir に展開させる。ADR-0004
+    packaging.jniLibs.useLegacyPackaging = true
 }
 
 dependencies {

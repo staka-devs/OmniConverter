@@ -6,7 +6,7 @@ ARG NDK_SHA1=5107f898313790e449e87eee2183d9a20602dee9
 ENV ANDROID_NDK_HOME=/opt/android-ndk
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        autoconf automake autopoint bison ca-certificates cmake curl file flex gettext git gperf libtool \
+        autoconf automake autopoint bison bzip2 ca-certificates cmake curl file flex gettext git gperf libtool \
         make meson nasm ninja-build patch pkg-config python3 texinfo unzip xz-utils yasm \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /tmp/ndk.zip https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}-linux.zip \

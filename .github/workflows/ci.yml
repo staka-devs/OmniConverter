@@ -10,10 +10,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ネイティブエンジンをソースからビルドする。レシピと版が変わらない限りキャッシュを使う。ADR-0005
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - name: Restore native engines
+        id: native-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: native/out
+          key: native-${{ hashFiles('native/Dockerfile', 'native/build.sh', 'native/versions.sh', 'native/lib/**', 'native/recipes/**') }}
+      - name: Build native engines
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: native/run.sh ffmpeg
+      - name: Save native engines
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: native/out
+          key: ${{ steps.native-cache.outputs.cache-primary-key }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-out
+          path: native/out
+          retention-days: 3
+
   android-build:
+    needs: native
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: native-out
+          path: native/out
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -33,10 +65,15 @@ jobs:
 
   # 計装テストと E2E を、最小に近い API と最新 API のエミュレータで実行する
   emulator-tests:
+    needs: native
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: native-out
+          path: native/out
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
