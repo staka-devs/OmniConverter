@@ -55,3 +55,24 @@ LZ4_SHA256=683fed08a844ad012196381e40badf80c0bbe4962959761416d41c9e67d77ec7
 
 LIBARCHIVE_URL=https://github.com/libarchive/libarchive/releases/download/v3.8.11/libarchive-3.8.11.tar.xz
 LIBARCHIVE_SHA256=a3dc0872b1b39da34dc18ef1b944f0f11ffd37425d70ae04be679279f1cf43d2
+
+LIBTIFF_URL=https://download.osgeo.org/libtiff/tiff-4.7.2.tar.xz
+LIBTIFF_SHA256=4996f0c4f93094719b1ca5c6279b20e588773ba8a247533e486416fb662ddb88
+
+HIGHWAY_URL=https://github.com/google/highway/archive/refs/tags/1.4.0.tar.gz
+HIGHWAY_SHA256=e72241ac9524bb653ae52ced768b508045d4438726a303f10181a38f764a453c
+
+BROTLI_URL=https://github.com/google/brotli/archive/refs/tags/v1.2.1.tar.gz
+BROTLI_SHA256=98d35d11a78dc453aebb7d10c3748f3f73ff78c8267c0dc697b8631f67bf7e8f
+
+LCMS2_URL=https://github.com/mm2/Little-CMS/releases/download/lcms2.20/lcms2-2.20.tar.gz
+LCMS2_SHA256=18ff5504fa9cc8a2b1f3591180d90ead16c8a2ea78e530523b46eab70e1ca6b9
+
+LIBJXL_URL=https://github.com/libjxl/libjxl/archive/refs/tags/v0.13.0.tar.gz
+LIBJXL_SHA256=24d18c9af2d1f5a17730b3f8d3f70a5c16e5ac303f5d9d5fe9dc00cf7ca82af2
+
+LIBRAW_URL=https://github.com/LibRaw/LibRaw/archive/refs/tags/0.22.3.tar.gz
+LIBRAW_SHA256=7edf96c5b70cff88980a02ab0fc8af125cb6a4a377985573c654439d9d02355c
+
+IMAGEMAGICK_URL=https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.2-36.tar.gz
+IMAGEMAGICK_SHA256=5ba807e38a6bcb7c3c96a166485e270c5017aaa6b166f0440dc4b2badf6e6167

@@ -1,0 +1,2 @@
+fetch brotli "$BROTLI_URL" "$BROTLI_SHA256"
+cmake_build "$SRC/brotli" -DBROTLI_DISABLE_TESTS=ON -DBROTLI_BUILD_TOOLS=OFF

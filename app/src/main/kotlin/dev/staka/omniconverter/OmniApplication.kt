@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.work.Configuration
 import dev.staka.omniconverter.domain.engine.ConversionEngine
 import dev.staka.omniconverter.engine.ffmpeg.FfmpegEngine
+import dev.staka.omniconverter.engine.imagemagick.ImageMagickEngine
 import dev.staka.omniconverter.engine.libarchive.LibarchiveEngine
 import dev.staka.omniconverter.engine.libheif.LibheifEngine
 import dev.staka.omniconverter.infrastructure.process.BinaryLocator
@@ -24,6 +25,7 @@ open class OmniApplication : Application(), Configuration.Provider {
         return listOf(
             FfmpegEngine({ locator.locate("ffmpeg") }, runner),
             LibheifEngine(locator::locate, runner),
+            ImageMagickEngine({ locator.locate("magick") }, runner),
             LibarchiveEngine({ locator.locate("bsdtar") }, runner),
         )
     }

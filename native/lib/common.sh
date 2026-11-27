@@ -30,7 +30,12 @@ export PKG_CONFIG_LIBDIR=$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig
 export PKG_CONFIG_PATH=
 export PATH=$PREFIX/bin:$PATH
 
-mkdir -p "$DL" "$SRC" "$PREFIX" "$OUT"
+mkdir -p "$DL" "$SRC" "$PREFIX/lib" "$OUT"
+# Android の pthread と rt は libc にある。-lpthread を求めるビルドのために空の静的ライブラリを置く
+for l in pthread rt; do [ -f "$PREFIX/lib/lib$l.a" ] || "$AR" rcs "$PREFIX/lib/lib$l.a"; done
+# zlib は NDK の共有版を使う。pkg-config で探すビルドのために .pc だけを置く
+mkdir -p "$PREFIX/lib/pkgconfig"
+printf 'Name: zlib\nDescription: NDK zlib\nVersion: 1.3\nLibs: -lz\nCflags:\n' > "$PREFIX/lib/pkgconfig/zlib.pc"
 
 log() { printf '\n==> %s\n' "$*"; }
 
