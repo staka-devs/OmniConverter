@@ -136,7 +136,7 @@ fun FormatCategory.label() = when (this) {
 }
 
 /** バックグラウンドの変換で後から読めるよう、永続的な読み取り権限を取る */
-private fun Context.toFileRef(uri: Uri): FileRef {
+internal fun Context.toFileRef(uri: Uri): FileRef {
     runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
     val name = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
         if (c.moveToFirst()) c.getString(0) else null

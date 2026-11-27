@@ -20,4 +20,16 @@
     <string name="status_cancelled">キャンセル済み</string>
     <string name="status_succeeded">完了</string>
     <string name="status_failed">失敗</string>
+    <string name="tab_command">コマンド</string>
+    <string name="command_label">コマンド</string>
+    <string name="extension_label">出力の拡張子</string>
+    <string name="save_preset">保存</string>
+    <string name="preset_name">名前</string>
+    <string name="delete_preset">%1$s を削除</string>
+    <string name="run">実行</string>
+    <string name="error_empty">コマンドを入力してください</string>
+    <string name="error_quote">引用符が閉じていません</string>
+    <string name="error_input">{input} がありません</string>
+    <string name="error_output">{output} がありません</string>
+    <string name="error_extension">拡張子が正しくありません</string>
 </resources>

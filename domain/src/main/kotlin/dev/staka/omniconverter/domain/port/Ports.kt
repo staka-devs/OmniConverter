@@ -3,6 +3,7 @@ package dev.staka.omniconverter.domain.port
 import dev.staka.omniconverter.domain.engine.ConversionEngine
 import dev.staka.omniconverter.domain.model.ConversionJob
 import dev.staka.omniconverter.domain.model.FileRef
+import dev.staka.omniconverter.domain.model.Preset
 import kotlinx.coroutines.flow.Flow
 import java.nio.file.Path
 
@@ -29,6 +30,12 @@ interface FileGateway {
     suspend fun newWorkDir(): Path
 
     suspend fun deleteWorkDir(dir: Path)
+}
+
+interface PresetRepository {
+    fun observeAll(): Flow<List<Preset>>
+    suspend fun save(preset: Preset)
+    suspend fun delete(id: String)
 }
 
 /** 登録済みジョブをバックグラウンドで順に実行させる */
