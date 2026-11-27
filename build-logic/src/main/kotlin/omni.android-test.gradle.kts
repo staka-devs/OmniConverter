@@ -11,11 +11,13 @@ fun TestOptions.managedEmulators() {
                 device = "Medium Phone"
                 apiLevel = 31
                 systemImageSource = "google"
+                testedAbi = "arm64-v8a"
             }
             create("api37") {
                 device = "Medium Phone"
                 apiLevel = 37
                 systemImageSource = "google"
+                testedAbi = "arm64-v8a"
             }
         }
         groups {

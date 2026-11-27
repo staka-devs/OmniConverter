@@ -28,7 +28,7 @@ class UpperCaseEngine : ConversionEngine {
     override val capabilities = setOf(Capability(Formats.of("txt"), Formats.of("md")))
 
     override suspend fun convert(task: ConversionTask, onProgress: (Progress) -> Unit): ConversionResult {
-        Files.writeString(task.output, Files.readString(task.input).uppercase())
+        task.output.toFile().writeText(task.input.toFile().readText().uppercase())
         return ConversionResult.Success(task.output, "")
     }
 

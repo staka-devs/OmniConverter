@@ -71,12 +71,12 @@ class DeviceIT {
 
     @Test
     fun 書き出したファイルを取り込み直せる() = runBlocking {
-        val src = Files.createTempFile(context.cacheDir.toPath(), "it", ".txt").also { Files.writeString(it, "こんにちは") }
+        val src = Files.createTempFile(context.cacheDir.toPath(), "it", ".txt").also { it.toFile().writeText("こんにちは") }
         val exported = files.export(src, "it-${System.nanoTime()}.txt").also { created += Uri.parse(it.uri) }
 
         val workDir = files.newWorkDir()
         val imported = files.importToWorkspace(exported, workDir)
-        assertEquals("こんにちは", Files.readString(imported))
+        assertEquals("こんにちは", imported.toFile().readText())
         assertTrue(imported.startsWith(workDir))
 
         files.deleteWorkDir(workDir)
@@ -95,7 +95,7 @@ class DeviceIT {
                 RunningJobs(),
             )
 
-            val src = Files.createTempFile(context.cacheDir.toPath(), "src", ".txt").also { Files.writeString(it, "abc") }
+            val src = Files.createTempFile(context.cacheDir.toPath(), "src", ".txt").also { it.toFile().writeText("abc") }
             val source = files.export(src, "worker-${System.nanoTime()}.txt").also { created += Uri.parse(it.uri) }
             repo.upsert(listOf(ConversionJob("j1", source, Formats.of("md")), ConversionJob("j2", source, Formats.of("md"))))
 
@@ -119,7 +119,7 @@ class DeviceIT {
         override val id = EngineId("upper")
         override val capabilities = setOf(Capability(Formats.of("txt"), Formats.of("md")))
         override suspend fun convert(task: ConversionTask, onProgress: (Progress) -> Unit): ConversionResult {
-            Files.writeString(task.output, Files.readString(task.input).uppercase())
+            task.output.toFile().writeText(task.input.toFile().readText().uppercase())
             return ConversionResult.Success(task.output, "")
         }
         override suspend fun runRaw(args: List<String>, workDir: Path, output: Path, onProgress: (Progress) -> Unit) =
