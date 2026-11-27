@@ -24,7 +24,7 @@ jobs:
           key: native-${{ hashFiles('native/Dockerfile', 'native/build.sh', 'native/versions.sh', 'native/lib/**', 'native/recipes/**') }}
       - name: Build native engines
         if: steps.native-cache.outputs.cache-hit != 'true'
-        run: native/run.sh ffmpeg libheif libarchive imagemagick
+        run: native/run.sh ffmpeg libheif libarchive imagemagick mupdf
       - name: Save native engines
         if: steps.native-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4

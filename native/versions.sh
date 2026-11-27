@@ -76,3 +76,6 @@ LIBRAW_SHA256=7edf96c5b70cff88980a02ab0fc8af125cb6a4a377985573c654439d9d02355c
 
 IMAGEMAGICK_URL=https://github.com/ImageMagick/ImageMagick/archive/refs/tags/7.1.2-36.tar.gz
 IMAGEMAGICK_SHA256=5ba807e38a6bcb7c3c96a166485e270c5017aaa6b166f0440dc4b2badf6e6167
+
+MUPDF_URL=https://mupdf.com/downloads/archive/mupdf-1.28.6-source.tar.gz
+MUPDF_SHA256=dc85000640a45d90ca9b77b061f6ca67cce0c4d4fbecf8819647baf573eef101

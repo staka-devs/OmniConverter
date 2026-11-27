@@ -109,6 +109,14 @@ class ConvertFlowE2E {
         assertEquals("WEBP", head.copyOfRange(8, 12).decodeToString())
     }
 
+    @Test
+    fun 同梱したmutoolでHTMLをPDFにする() {
+        val html = "<html><body><p>こんにちは</p></body></html>".toByteArray()
+        val output = convertViaUi(createDownload("$name.html", html), "PDF", "$name.pdf")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        assertEquals("%PDF", head.decodeToString())
+    }
+
     /** 利用者と同じ操作で変換し、キューに完了が出たら出力ファイルを返す */
     private fun convertViaUi(source: Uri, target: String, outputName: String): Uri {
         intending(hasAction(Intent.ACTION_OPEN_DOCUMENT))
