@@ -8,6 +8,7 @@ import dev.staka.omniconverter.application.EnqueueConversions
 import dev.staka.omniconverter.application.ExecuteJob
 import dev.staka.omniconverter.application.GetAvailableTargets
 import dev.staka.omniconverter.application.ObserveJobs
+import dev.staka.omniconverter.domain.engine.ConversionEngine
 import dev.staka.omniconverter.infrastructure.db.createJobDao
 import dev.staka.omniconverter.infrastructure.db.RoomJobRepository
 import dev.staka.omniconverter.infrastructure.engine.ListEngineRegistry
@@ -18,14 +19,14 @@ import dev.staka.omniconverter.infrastructure.work.WorkJobScheduler
 import dev.staka.omniconverter.presentation.UseCases
 
 /** 合成ルート。Infrastructure の実装をポートへ結びつける唯一の場所。ADR-0010 */
-class AppContainer(context: Context) {
+class AppContainer(context: Context, engines: List<ConversionEngine>) {
     private val dao = createJobDao(context)
     private val repository = RoomJobRepository(dao)
     private val running = RunningJobs()
     private val scheduler = WorkJobScheduler(context, running)
 
     // 並び順がエンジンの優先順になる
-    private val registry = ListEngineRegistry(emptyList())
+    private val registry = ListEngineRegistry(engines)
     private val planner = ConversionPlanner(registry)
 
     val workerFactory = ConversionWorkerFactory(

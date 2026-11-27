@@ -2,6 +2,7 @@
 plugins {
     id("com.android.application")
     id("omni.android-compose")
+    id("omni.android-test")
 }
 
 android {
@@ -16,6 +17,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         ndk { abiFilters += "arm64-v8a" }
+        testInstrumentationRunner = "dev.staka.omniconverter.E2ETestRunner"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -40,4 +42,10 @@ dependencies {
     }
     implementation(project(":presentation"))
     implementation(libs.activity.compose)
+    implementation(platform(libs.compose.bom))
+
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.espresso.intents)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

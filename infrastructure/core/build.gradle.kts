@@ -1,5 +1,6 @@
 plugins {
     id("omni.android-library")
+    id("omni.android-test")
     alias(libs.plugins.ksp)
 }
 
@@ -19,4 +20,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     // Android の org.json は単体テストではスタブなので、実装を足す
     testImplementation(libs.orgjson)
+
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.work.testing)
 }

@@ -26,6 +26,13 @@ navigation-compose = { module = "androidx.navigation:navigation-compose", versio
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
+androidx-test-runner = { module = "androidx.test:runner", version = "1.7.0" }
+androidx-test-rules = { module = "androidx.test:rules", version = "1.7.0" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version = "1.3.0" }
+espresso-intents = { module = "androidx.test.espresso:espresso-intents", version = "3.7.0" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 orgjson = { module = "org.json:json", version.ref = "orgjson" }
 # build-logic
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
