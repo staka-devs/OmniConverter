@@ -10,32 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ネイティブエンジンをソースからビルドする。レシピと版が変わらない限りキャッシュを使う。ADR-0005
   native:
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v7
-      - name: Restore native engines
-        id: native-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: native/out
-          key: native-${{ hashFiles('native/Dockerfile', 'native/build.sh', 'native/versions.sh', 'native/lib/**', 'native/recipes/**') }}
-      - name: Build native engines
-        if: steps.native-cache.outputs.cache-hit != 'true'
-        run: native/run.sh ffmpeg libheif libarchive imagemagick mupdf pandoc
-      - name: Save native engines
-        if: steps.native-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: native/out
-          key: ${{ steps.native-cache.outputs.cache-primary-key }}
-      - uses: actions/upload-artifact@v7
-        with:
-          name: native-out
-          path: native/out
-          retention-days: 3
+    uses: ./.github/workflows/native.yml
 
   android-build:
     needs: native

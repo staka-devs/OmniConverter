@@ -47,6 +47,16 @@ fetch() {
     echo "$sha  $file" | sha256sum -c - >/dev/null || { echo "ハッシュが一致しません: $file" >&2; rm -f "$file"; exit 1; }
     rm -rf "${SRC:?}/$name" && mkdir -p "$SRC/$name"
     tar -xf "$file" -C "$SRC/$name" --strip-components=1
+    collect_licenses "$name"
+}
+
+# 配布物に添えるため、ソースに含まれるライセンス文書を $OUT/assets/licenses/<名前>/ に集める。ADR-0006
+collect_licenses() {
+    local name=$1
+    rm -rf "${OUT:?}/assets/licenses/$name"
+    (cd "$SRC/$name" && find . -maxdepth 3 -type f \
+        \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'COPYRIGHT*' -o -iname 'NOTICE*' \) \
+        -not -path '*/test*' -exec install -D -m 644 {} "$OUT/assets/licenses/$name/{}" \;)
 }
 
 # autotools <ソース> [configure の追加引数...]

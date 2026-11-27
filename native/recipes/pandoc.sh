@@ -6,3 +6,6 @@ file -L "$bin" | grep -q "statically linked" || { echo "静的リンクではあ
 mkdir -p "$OUT/pandoc/arm64-v8a"
 cp "$bin" "$OUT/pandoc/arm64-v8a/libpandoc.so"
 log "OK libpandoc.so $(du -h "$bin" | cut -f1)"
+# pandoc の配布物にはライセンス文書が無いので、版と入手先を書いて添える
+mkdir -p "$OUT/assets/licenses/pandoc"
+printf "pandoc 3.14\nLicense: GPL-2.0-or-later\nSource: https://github.com/jgm/pandoc/tree/3.14\n" > "$OUT/assets/licenses/pandoc/LICENSE"
