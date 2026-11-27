@@ -68,6 +68,19 @@ class ConvertFlowE2E {
         assertTrue(head.decodeToString() == "ID3" || head[0] == 0xFF.toByte(), "MP3 ではありません")
     }
 
+    @Test
+    fun 同梱したlibheifで写真をHEICにする() {
+        val png = java.io.ByteArrayOutputStream().also { out ->
+            android.graphics.Bitmap.createBitmap(32, 32, android.graphics.Bitmap.Config.ARGB_8888)
+                .apply { eraseColor(android.graphics.Color.BLUE) }
+                .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        }.toByteArray()
+        val output = convertViaUi(createDownload("$name.png", png), "HEIC", "$name.heic")
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(12).also { s.read(it) } }
+        // HEIF は ftyp ボックスで始まる
+        assertEquals("ftyp", head.copyOfRange(4, 8).decodeToString())
+    }
+
     /** 利用者と同じ操作で変換し、キューに完了が出たら出力ファイルを返す */
     private fun convertViaUi(source: Uri, target: String, outputName: String): Uri {
         intending(hasAction(Intent.ACTION_OPEN_DOCUMENT))

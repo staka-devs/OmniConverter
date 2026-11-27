@@ -10,6 +10,7 @@ import dev.staka.omniconverter.domain.model.FormatCategory
 import dev.staka.omniconverter.domain.model.Formats
 import dev.staka.omniconverter.domain.model.Progress
 import dev.staka.omniconverter.infrastructure.process.NativeProcessRunner
+import dev.staka.omniconverter.infrastructure.process.convert
 import java.io.File
 import java.nio.file.Path
 
@@ -32,14 +33,8 @@ class FfmpegEngine(
 
     private suspend fun run(args: List<String>, workDir: Path, output: Path, onProgress: (Progress) -> Unit): ConversionResult {
         val progress = FfmpegProgress()
-        val result = runner.run(listOf(binary().path) + args, workDir.toFile()) { line ->
+        return runner.convert(listOf(binary().path) + args, workDir.toFile(), output) { line ->
             progress.feed(line)?.let { onProgress(Progress(it)) }
-        }
-        val out = output.toFile()
-        return if (result.exitCode == 0 && out.length() > 0) {
-            ConversionResult.Success(output, result.log)
-        } else {
-            ConversionResult.Failure(result.exitCode, result.log)
         }
     }
 }

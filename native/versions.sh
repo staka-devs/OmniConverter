@@ -25,3 +25,18 @@ LAME_SHA256=ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
 
 LIBWEBP_URL=https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.6.0.tar.gz
 LIBWEBP_SHA256=e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564
+
+LIBJPEG_URL=https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/3.2.1/libjpeg-turbo-3.2.1.tar.gz
+LIBJPEG_SHA256=c27ad72a68da151177929aa969ae773a2da5ac2af9ce946079314fdac8cece7f
+
+LIBPNG_URL=https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.59.tar.gz
+LIBPNG_SHA256=2540302a1844ad2b2b501977abecfa850f265f97b78f065a712ab4074a89f5b5
+
+LIBDE265_URL=https://github.com/strukturag/libde265/releases/download/v1.1.3/libde265-1.1.3.tar.gz
+LIBDE265_SHA256=554228bd17788c99a7e63b37ab5634722190e6e2bf60c1dcb01cef328e133905
+
+LIBAOM_URL=https://storage.googleapis.com/aom-releases/libaom-3.15.3.tar.gz
+LIBAOM_SHA256=12c01dc731ed7b5a999e28120b45bf58a002ba3435a4ba2cfbc1e084a27c9c04
+
+LIBHEIF_URL=https://github.com/strukturag/libheif/releases/download/v1.23.7/libheif-1.23.7.tar.gz
+LIBHEIF_SHA256=f7483e818503ea6224c8863e4a56ac02c7089021a98472c811c12aa19faf2475
