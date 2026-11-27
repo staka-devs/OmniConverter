@@ -39,6 +39,25 @@ class MupdfEngineTest {
     }
 
     @Test
+    fun ページ番号付きの先頭ページを求められた名前に移す() = runBlocking {
+        // mutool と同じく、-o の %d をページ番号に置き換えて書く
+        val fake = File(dir, "mutool-paged").apply {
+            val script = listOf(
+                "#!/bin/sh",
+                "while [ \"\$1\" != \"-o\" ]; do shift; done",
+                "echo png > \"\$(echo \"\$2\" | sed 's/%d/1/')\"",
+            )
+            writeText(script.joinToString("\n"))
+            setExecutable(true)
+        }
+        val t = task("pdf", "png")
+        val result = MupdfEngine({ fake }, NativeProcessRunner()).convert(t) {}
+        assertTrue(result is ConversionResult.Success)
+        assertEquals("png", t.output.toFile().readText().trim())
+        assertTrue(!File(dir, "mutool-page1.png").exists())
+    }
+
+    @Test
     fun 出力ができれば成功() = runBlocking {
         // -o の次の引数へ書き込む mutool の代わり
         val fake = File(dir, "mutool").apply {

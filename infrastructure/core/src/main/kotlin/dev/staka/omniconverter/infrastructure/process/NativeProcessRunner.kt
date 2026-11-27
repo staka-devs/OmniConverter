@@ -19,7 +19,8 @@ suspend fun NativeProcessRunner.convert(
     environment: Map<String, String> = emptyMap(),
     onLine: (String) -> Unit = {},
 ): ConversionResult {
-    val result = run(command, workDir, environment, onLine)
+    // Android には /tmp が無いので、一時ファイルは作業ディレクトリに作らせる
+    val result = run(command, workDir, mapOf("TMPDIR" to workDir.path) + environment, onLine)
     return if (result.exitCode == 0 && output.toFile().length() > 0) {
         ConversionResult.Success(output, result.log)
     } else {

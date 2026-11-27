@@ -10,7 +10,9 @@ import dev.staka.omniconverter.domain.model.Progress
 import dev.staka.omniconverter.infrastructure.process.NativeProcessRunner
 import dev.staka.omniconverter.infrastructure.process.convert
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 /** PDF、XPS、EPUB、CBZ、HTML の変換。同梱した mutool を使う */
 class MupdfEngine(
@@ -20,9 +22,15 @@ class MupdfEngine(
     override val id = EngineId("mupdf")
     override val capabilities: Set<Capability> = MupdfArgs.capabilities
 
-    override suspend fun convert(task: ConversionTask, onProgress: (Progress) -> Unit): ConversionResult =
-        runner.convert(listOf(binary().path) + MupdfArgs.command(task), task.output.parent.toFile(), task.output)
-            .also { onProgress(Progress(1f)) }
+    override suspend fun convert(task: ConversionTask, onProgress: (Progress) -> Unit): ConversionResult {
+        val written = MupdfArgs.pageFile(task)?.let { File(it.replace("%d", "1")).toPath() } ?: task.output
+        val result = runner.convert(listOf(binary().path) + MupdfArgs.command(task), task.output.parent.toFile(), written)
+        onProgress(Progress(1f))
+        if (result !is ConversionResult.Success || written == task.output) return result
+        // ページ番号付きで書かれた先頭ページを、求められた名前に移す
+        Files.move(written, task.output, StandardCopyOption.REPLACE_EXISTING)
+        return ConversionResult.Success(task.output, result.log)
+    }
 
     /** 上級モードでは mutool の副コマンドから指定する。例: convert -o {output} {input} */
     override suspend fun runRaw(args: List<String>, workDir: Path, output: Path, onProgress: (Progress) -> Unit) =
@@ -39,6 +47,10 @@ object MupdfArgs {
         readable.forEach { from -> (writable - from).forEach { add(Capability(from, it)) } }
     }
 
+    /** PNG と SVG は、mutool がページ番号を付けて書く。その名前の型を返す */
+    fun pageFile(task: ConversionTask): String? =
+        if (task.to.id in setOf("png", "svg")) task.output.parent.resolve("mutool-page%d.${task.to.id}").toString() else null
+
     fun command(task: ConversionTask): List<String> {
         val layout = if (task.from.id in reflowable) listOf("-W", "595", "-H", "842", "-S", "11") else emptyList()
         // shortcut: 1 件の変換は 1 ファイルを出すので、PNG と SVG は先頭ページだけ。全ページが要るなら CBZ を選ぶ
@@ -53,6 +65,6 @@ object MupdfArgs {
         }
         return listOf("convert") + layout + listOf("-F", format) +
             (options?.let { listOf("-O", it) } ?: emptyList()) +
-            listOf("-o", task.output.toString(), task.input.toString()) + listOfNotNull(pages)
+            listOf("-o", pageFile(task) ?: task.output.toString(), task.input.toString()) + listOfNotNull(pages)
     }
 }
