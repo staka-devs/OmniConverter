@@ -31,7 +31,17 @@ class ScreenTest {
     fun ファイル未選択ではファイル選択だけを出す() {
         compose.setContent { ConvertScreen(ConvertUiState(), {}, {}, {}, {}) }
         compose.onNodeWithText(str(R.string.pick_files)).assertExists()
+        compose.onNodeWithText(str(R.string.category_video)).assertExists()
         compose.onNodeWithText(str(R.string.tab_convert)).assertDoesNotExist()
+    }
+
+    @Test
+    fun 多くのファイルは先頭だけを並べて残りを件数で出す() {
+        val files = (1..7).map { FileRef("u$it", "photo$it.jpg") }
+        compose.setContent { ConvertScreen(ConvertUiState(files, listOf(Formats.of("png"))), {}, {}, {}, {}) }
+        compose.onNodeWithText("photo5.jpg").assertExists()
+        compose.onNodeWithText("photo6.jpg").assertDoesNotExist()
+        compose.onNodeWithText(str(R.string.more_files, 2)).assertExists()
     }
 
     @Test
