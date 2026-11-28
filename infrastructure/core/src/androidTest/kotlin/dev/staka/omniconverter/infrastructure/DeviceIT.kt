@@ -127,9 +127,10 @@ class DeviceIT {
             val worker = TestListenableWorkerBuilder<ConversionWorker>(context).setWorkerFactory(factory).build()
             assertTrue(worker.doWork() is ListenableWorker.Result.Success)
 
-            // キューが空になったら完了を知らせる
-            val notices = context.getSystemService(android.app.NotificationManager::class.java).activeNotifications
-            assertTrue(notices.any { it.id == 2 }, "完了の通知がありません")
+            // キューが空になったら完了を知らせる。通知の登録は非同期なので、少し待つ
+            val manager = context.getSystemService(android.app.NotificationManager::class.java)
+            val posted = (1..50).any { manager.activeNotifications.any { n -> n.id == 2 } || run { delay(100); false } }
+            assertTrue(posted, "完了の通知がありません")
 
             listOf("j1", "j2").forEach { id ->
                 val job = repo.get(id)!!
