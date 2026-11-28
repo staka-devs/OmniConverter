@@ -1,9 +1,11 @@
-// 計装テストを Gradle Managed Devices で動かす。ciGroup<Variant>AndroidTest で全端末を回す
-// x86_64 でも ARM 変換を持つ google イメージを使う。arm64 専用の APK と実行ファイルを動かすため。ADR-0007
 import com.android.build.api.dsl.ApplicationExtension
 import com.android.build.api.dsl.LibraryExtension
 import com.android.build.api.dsl.TestOptions
 
+/**
+ * 計装テストを回す Gradle Managed Devices。ciGroup<Variant>AndroidTest で全端末を回す。
+ * x86_64 でも ARM 変換を持つ google イメージを使い、arm64 専用の APK と実行ファイルを動かす。ADR-0007
+ */
 fun TestOptions.managedEmulators() {
     managedDevices {
         localDevices {

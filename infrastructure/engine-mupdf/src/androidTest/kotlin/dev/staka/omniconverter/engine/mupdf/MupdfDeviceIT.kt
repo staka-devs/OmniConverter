@@ -21,6 +21,13 @@ import kotlin.test.fail
 /** 本物の mutool で、PDF と HTML を各形式へ書き出す */
 @RunWith(AndroidJUnit4::class)
 class MupdfDeviceIT {
+    private companion object {
+        const val PAGE_WIDTH_POINTS = 300
+        const val PAGE_HEIGHT_POINTS = 200
+        const val POINTS_PER_INCH = 72
+        const val RENDER_DPI = 150
+    }
+
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val dir = File(context.cacheDir, "mupdf-it").apply { mkdirs() }
     private val engine = MupdfEngine({ BinaryLocator(context).locate("mutool") }, NativeProcessRunner())
@@ -29,7 +36,7 @@ class MupdfDeviceIT {
     private fun samplePdf(): File = File(dir, "sample.pdf").apply {
         val doc = PdfDocument()
         repeat(2) { i ->
-            val page = doc.startPage(PdfDocument.PageInfo.Builder(300, 200, i + 1).create())
+            val page = doc.startPage(PdfDocument.PageInfo.Builder(PAGE_WIDTH_POINTS, PAGE_HEIGHT_POINTS, i + 1).create())
             page.canvas.drawText("Page ${i + 1} OmniConverter", 20f, 50f, Paint().apply { textSize = 18f })
             doc.finishPage(page)
         }
@@ -54,8 +61,7 @@ class MupdfDeviceIT {
     @Test
     fun PDFの先頭ページを画像にする() {
         val bmp = BitmapFactory.decodeFile(convert(samplePdf(), "png").path)
-        // 72 dpi の 300x200 ポイントを 150 dpi で描く
-        assertEquals(625, bmp.width)
+        assertEquals(PAGE_WIDTH_POINTS * RENDER_DPI / POINTS_PER_INCH, bmp.width)
     }
 
     @Test

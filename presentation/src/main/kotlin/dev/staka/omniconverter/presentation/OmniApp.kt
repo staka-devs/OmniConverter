@@ -75,8 +75,7 @@ fun OmniApp(useCases: UseCases, shared: List<FileRef> = emptyList()) {
         CommandViewModel(useCases.listEngines, useCases.observePresets, useCases.savePreset, useCases.deletePreset, useCases.enqueue)
     }
     var tab by rememberSaveable { mutableIntStateOf(Tab.CONVERT.ordinal) }
-    // 通知が拒否されても変換は進むので、結果は待たない
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val askNotificationPermission = rememberNotificationPermissionRequest()
     LaunchedEffect(shared) {
         if (shared.isNotEmpty()) {
             convert.receiveShared(shared)
@@ -112,9 +111,7 @@ fun OmniApp(useCases: UseCases, shared: List<FileRef> = emptyList()) {
                         onSelect = convert::select,
                         onClear = convert::clear,
                         onConvert = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
+                            askNotificationPermission()
                             convert.convert { tab = Tab.QUEUE.ordinal }
                         },
                         modifier = modifier,
@@ -143,5 +140,14 @@ fun OmniApp(useCases: UseCases, shared: List<FileRef> = emptyList()) {
                 }
             }
         }
+    }
+}
+
+/** 完了通知の許可を求める関数を返す。拒否されても変換は進むので、結果は待たない */
+@Composable
+private fun rememberNotificationPermissionRequest(): () -> Unit {
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    return {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }

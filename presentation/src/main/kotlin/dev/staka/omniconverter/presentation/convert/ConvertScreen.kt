@@ -118,24 +118,7 @@ fun ConvertScreen(
                 }
             }
         }
-        // 出力先は変換ボタンのすぐ上に置き、何をどこへ出すかを一目で分かるようにする
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { folderPicker.launch(null) }, modifier = Modifier.weight(1f)) {
-                Icon(painterResource(R.drawable.ic_folder), contentDescription = stringResource(R.string.output_dir))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    outputDir?.name ?: stringResource(R.string.default_output_dir),
-                    maxLines = 1,
-                    overflow = TextOverflow.MiddleEllipsis,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            if (outputDir != null) {
-                IconButton(onClick = { onOutputDir(null) }) {
-                    Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.reset_output_dir))
-                }
-            }
-        }
+        OutputDirRow(outputDir, onPick = { folderPicker.launch(null) }, onReset = { onOutputDir(null) })
         Button(
             onClick = onConvert,
             enabled = state.selected != null,
@@ -190,5 +173,27 @@ fun Context.sharedFiles(intent: Intent?): List<FileRef> {
             contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
         }.getOrNull()
         FileRef(uri.toString(), name ?: uri.lastPathSegment ?: "file")
+    }
+}
+
+/** 出力先。変換ボタンのすぐ上に置き、何をどこへ出すかを一目で分かるようにする */
+@Composable
+private fun OutputDirRow(outputDir: FileRef?, onPick: () -> Unit, onReset: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        TextButton(onClick = onPick, modifier = Modifier.weight(1f)) {
+            Icon(painterResource(R.drawable.ic_folder), contentDescription = stringResource(R.string.output_dir))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                outputDir?.name ?: stringResource(R.string.default_output_dir),
+                maxLines = 1,
+                overflow = TextOverflow.MiddleEllipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (outputDir != null) {
+            IconButton(onClick = onReset) {
+                Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.reset_output_dir))
+            }
+        }
     }
 }

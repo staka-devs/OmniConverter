@@ -23,13 +23,15 @@ class MupdfEngine(
     override val capabilities: Set<Capability> = MupdfArgs.capabilities
 
     override suspend fun convert(task: ConversionTask, onProgress: (Progress) -> Unit): ConversionResult {
-        val written = MupdfArgs.pageFile(task)?.let { File(it.replace("%d", "1")).toPath() } ?: task.output
+        val written = MupdfArgs.firstPageFile(task) ?: task.output
         val result = runner.convert(listOf(binary().path) + MupdfArgs.command(task), task.output.parent.toFile(), written)
         onProgress(Progress(1f))
-        if (result !is ConversionResult.Success || written == task.output) return result
-        // ページ番号付きで書かれた先頭ページを、求められた名前に移す
-        Files.move(written, task.output, StandardCopyOption.REPLACE_EXISTING)
-        return ConversionResult.Success(task.output, result.log)
+        return if (result is ConversionResult.Success && written != task.output) moved(written, task.output, result.log) else result
+    }
+
+    private fun moved(from: Path, to: Path, log: String): ConversionResult {
+        Files.move(from, to, StandardCopyOption.REPLACE_EXISTING)
+        return ConversionResult.Success(to, log)
     }
 
     /** 上級モードでは mutool の副コマンドから指定する。例: convert -o {output} {input} */
@@ -40,8 +42,11 @@ class MupdfEngine(
 object MupdfArgs {
     private val readable = listOf("pdf", "xps", "epub", "cbz", "html").map(Formats::of)
     private val writable = listOf("pdf", "cbz", "png", "svg", "html", "txt").map(Formats::of)
-    // 決まったページを持たない入力は、A4 に組んでから書き出す
-    private val reflowable = setOf("epub", "html")
+    private val reflowableInputs = setOf("epub", "html")
+    private val pagedOutputs = setOf("png", "svg")
+
+    /** 決まったページを持たない入力を組む大きさ。A4 の幅と高さをポイントで、文字の大きさとともに指定する */
+    private val A4_LAYOUT = listOf("-W", "595", "-H", "842", "-S", "11")
 
     val capabilities: Set<Capability> = buildSet {
         readable.forEach { from -> (writable - from).forEach { add(Capability(from, it)) } }
@@ -49,11 +54,17 @@ object MupdfArgs {
 
     /** PNG と SVG は、mutool がページ番号を付けて書く。その名前の型を返す */
     fun pageFile(task: ConversionTask): String? =
-        if (task.to.id in setOf("png", "svg")) task.output.parent.resolve("mutool-page%d.${task.to.id}").toString() else null
+        if (task.to.id in pagedOutputs) task.output.parent.resolve("mutool-page%d.${task.to.id}").toString() else null
 
+    /** ページ番号付きで書かれる先頭ページ。ページを分けない出力なら null */
+    fun firstPageFile(task: ConversionTask): Path? = pageFile(task)?.let { File(it.replace("%d", "1")).toPath() }
+
+    /**
+     * 1 件の変換は 1 ファイルを出すので、PNG と SVG は先頭ページだけを書き出す。全ページが要るなら CBZ を選ぶ。
+     * 今後、全ページを別々のファイルにしたくなったら、変換結果に複数の出力を持たせる
+     */
     fun command(task: ConversionTask): List<String> {
-        val layout = if (task.from.id in reflowable) listOf("-W", "595", "-H", "842", "-S", "11") else emptyList()
-        // shortcut: 1 件の変換は 1 ファイルを出すので、PNG と SVG は先頭ページだけ。全ページが要るなら CBZ を選ぶ
+        val layout = if (task.from.id in reflowableInputs) A4_LAYOUT else emptyList()
         val (format, options, pages) = when (task.to.id) {
             "pdf" -> Triple("pdf", null, null)
             "cbz" -> Triple("cbz", "resolution=150", null)

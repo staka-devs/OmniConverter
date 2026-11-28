@@ -18,8 +18,7 @@ dependencies {
     api(libs.work.runtime)
 
     testImplementation(libs.kotlinx.coroutines.test)
-    // Android の org.json は単体テストではスタブなので、実装を足す
-    testImplementation(libs.orgjson)
+    testImplementation(libs.android.json.on.jvm)
 
     androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.work.testing)

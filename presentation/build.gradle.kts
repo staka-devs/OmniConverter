@@ -1,4 +1,3 @@
-// Presentation は Application と Domain のみに依存する。Infrastructure への依存は layer-check が拒否する
 plugins {
     id("omni.android-library")
     id("omni.android-compose")

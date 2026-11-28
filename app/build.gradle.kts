@@ -1,4 +1,3 @@
-// 合成ルート。全モジュールを束ね、ここでだけ Infrastructure を配線する
 plugins {
     id("com.android.application")
     id("omni.android-compose")
@@ -14,7 +13,6 @@ android {
         applicationId = "dev.staka.omniconverter"
         minSdk = 29
         targetSdk = 37
-        // リリースではタグと実行番号から渡す。ADR-0012
         versionCode = providers.gradleProperty("versionCode").orNull?.toInt() ?: 1
         versionName = providers.gradleProperty("versionName").orNull ?: "0.1.0"
         ndk { abiFilters += "arm64-v8a" }
@@ -24,23 +22,19 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    // 署名鍵は CI のシークレットから環境変数で受け取る。無ければ署名しない
-    val keystore = System.getenv("OMNI_KEYSTORE")
-    if (keystore != null) {
+    val ciReleaseKeystore = System.getenv("OMNI_KEYSTORE")
+    if (ciReleaseKeystore != null) {
         signingConfigs.create("release") {
-            storeFile = file(keystore)
+            storeFile = file(ciReleaseKeystore)
             storePassword = System.getenv("OMNI_KEYSTORE_PASSWORD")
             keyAlias = System.getenv("OMNI_KEY_ALIAS")
             keyPassword = System.getenv("OMNI_KEY_PASSWORD")
         }
         buildTypes.getByName("release").signingConfig = signingConfigs.getByName("release")
     }
-    // 同梱したエンジンのライセンス文書を assets/licenses に入れる。ADR-0006
-    sourceSets.getByName("main").assets.srcDir(rootProject.file("native/out/assets"))
-    packaging {
-        // 同梱した実行ファイルを nativeLibraryDir に展開して実行するため。ADR-0004
-        jniLibs.useLegacyPackaging = true
-    }
+    val engineLicenseAssets = rootProject.file("native/out/assets")
+    sourceSets.getByName("main").assets.srcDir(engineLicenseAssets)
+    packaging.extractBundledExecutables()
 }
 
 kotlin {

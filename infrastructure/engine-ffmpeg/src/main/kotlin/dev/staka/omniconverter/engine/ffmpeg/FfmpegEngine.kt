@@ -57,6 +57,10 @@ object FfmpegArgs {
     private val h264 = listOf("-c:v", "libx264", "-preset", "medium", "-crf", "23", "-pix_fmt", "yuv420p")
     private val aac = listOf("-c:a", "aac", "-b:a", "192k")
 
+    /** 動画全体から 1 本のパレットを作って量子化する。短い GIF でも色が崩れにくい */
+    private const val GIF_WITH_SHARED_PALETTE =
+        "fps=12,scale='min(480,iw)':-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse"
+
     fun encode(from: Format, to: Format): List<String> {
         val dropVideo = if (from.category == FormatCategory.VIDEO && to.category == FormatCategory.AUDIO) listOf("-vn") else emptyList()
         return dropVideo + when (to.id) {
@@ -75,8 +79,7 @@ object FfmpegArgs {
             "ogg", "opus" -> listOf("-c:a", "libopus", "-b:a", "128k")
             "wma" -> listOf("-c:a", "wmav2", "-b:a", "192k")
             "aiff" -> listOf("-c:a", "pcm_s16be")
-            // 1 本のパレットで全体を量子化すると、短い GIF でも色が崩れにくい
-            "gif" -> listOf("-an", "-vf", "fps=12,scale='min(480,iw)':-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse", "-loop", "0")
+            "gif" -> listOf("-an", "-vf", GIF_WITH_SHARED_PALETTE, "-loop", "0")
             "webp" -> listOf("-an", "-vf", "fps=12,scale='min(480,iw)':-2", "-c:v", "libwebp_anim", "-q:v", "75", "-loop", "0")
             else -> error("ffmpeg は ${to.id} を出力できません")
         }

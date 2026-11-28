@@ -122,15 +122,18 @@ class ConversionWorker(
         private const val CHANNEL = "conversion"
         private const val NOTIFICATION_ID = 1
         private const val DONE_CHANNEL = "conversion-done"
-        private const val DONE_NOTIFICATION_ID = 2
+        const val DONE_NOTIFICATION_ID = 2
     }
 }
 
+/**
+ * [ConversionWorker] に依存を渡す。
+ * @param parallelism 同時に変換する件数。今は固定で、端末ごとに変えたくなったら設定画面から渡す
+ */
 class ConversionWorkerFactory(
     private val dao: JobDao,
     private val executeJob: ExecuteJob,
     private val running: RunningJobs,
-    // shortcut: 並列数は固定。端末ごとに調整したくなったら設定画面から渡す
     private val parallelism: Int = 2,
 ) : WorkerFactory() {
     override fun createWorker(appContext: Context, workerClassName: String, workerParameters: WorkerParameters): ListenableWorker? =
@@ -142,11 +145,14 @@ class ConversionWorkerFactory(
 }
 
 class WorkJobScheduler(private val context: Context, private val running: RunningJobs) : JobScheduler {
+    /**
+     * 実行中のワーカーは後から積まれたジョブも拾う。
+     * 後ろに 1 回分を足しておき、ワーカーが終わる直前に積まれたジョブだけを取りこぼさないようにする
+     */
     override fun schedule() {
         val request = OneTimeWorkRequestBuilder<ConversionWorker>()
             .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
-        // 実行中のワーカーは新しく積まれたジョブも拾うので、APPEND_OR_REPLACE で取りこぼしだけ防ぐ
         WorkManager.getInstance(context).enqueueUniqueWork(ConversionWorker.UNIQUE_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 

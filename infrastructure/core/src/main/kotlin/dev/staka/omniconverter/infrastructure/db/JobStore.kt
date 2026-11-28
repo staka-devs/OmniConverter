@@ -139,10 +139,10 @@ class RoomJobRepository(private val dao: JobDao, private val clock: () -> Long =
 
     override suspend fun get(id: String): ConversionJob? = dao.get(id)?.toDomain()
 
+    /** 既存のジョブは作成時刻を保つ。新規のジョブには一括登録の中の順番を時刻に足し、登録順に並べる */
     override suspend fun upsert(jobs: List<ConversionJob>) {
-        // 一括登録した順を保つため、新規には連番の時刻を振る
-        val now = clock()
-        dao.upsert(jobs.mapIndexed { i, job -> job.toEntity(dao.createdAt(job.id) ?: (now + i)) })
+        val batchStart = clock()
+        dao.upsert(jobs.mapIndexed { position, job -> job.toEntity(dao.createdAt(job.id) ?: (batchStart + position)) })
     }
 
     override suspend fun delete(id: String) = dao.delete(id)

@@ -31,10 +31,9 @@ class ImageMagickEngine(
 object ImageMagickArgs {
     private val writable = listOf("jpg", "png", "webp", "gif", "bmp", "tiff", "heic", "avif", "jxl", "ico", "psd", "tga")
         .map(Formats::of)
-    // RAW は読み込みだけ
-    private val readable = writable + Formats.of("dng")
-    // 複数のフレームやページを持てる出力
-    private val multiFrame = setOf("gif", "webp", "tiff", "pdf")
+    private val readOnly = listOf(Formats.of("dng"))
+    private val readable = writable + readOnly
+    private val multiFrameOutputs = setOf("gif", "webp", "tiff", "pdf")
 
     val capabilities: Set<Capability> = buildSet {
         readable.forEach { from ->
@@ -44,8 +43,7 @@ object ImageMagickArgs {
     }
 
     fun command(task: ConversionTask): List<String> {
-        // 1 枚しか持てない形式へは先頭のフレームだけを使う。PSD では統合済みの画像になる
-        val input = if (task.to.id in multiFrame) task.input.toString() else "${task.input}[0]"
+        val input = inputFor(task)
         val options = when (task.to.id) {
             "jpg" -> listOf("-quality", "92")
             "webp" -> listOf("-quality", "85")
@@ -53,7 +51,10 @@ object ImageMagickArgs {
             "ico" -> listOf("-resize", "256x256>")
             else -> emptyList()
         }
-        // 写真の向きを EXIF に合わせてから書き出す
         return listOf(input, "-auto-orient") + options + task.output.toString()
     }
+
+    /** 1 枚しか持てない形式へは先頭のフレームだけを渡す。PSD では統合済みの画像になる */
+    private fun inputFor(task: ConversionTask): String =
+        if (task.to.id in multiFrameOutputs) task.input.toString() else "${task.input}[0]"
 }

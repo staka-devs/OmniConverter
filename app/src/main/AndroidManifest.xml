@@ -16,7 +16,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- 他のアプリからファイルを共有されたら、そのまま変換画面を開く -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.SEND_MULTIPLE" />
@@ -25,7 +24,6 @@
             </intent-filter>
         </activity>
 
-        <!-- WorkManager は OmniApplication が渡す WorkerFactory で初期化する -->
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

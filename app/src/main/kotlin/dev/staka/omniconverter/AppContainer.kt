@@ -37,7 +37,6 @@ class AppContainer(context: Context, engines: List<ConversionEngine>) {
     private val running = RunningJobs()
     private val scheduler = WorkJobScheduler(context, running)
 
-    // 並び順がエンジンの優先順になる
     private val registry = ListEngineRegistry(engines)
     private val planner = ConversionPlanner(registry)
 

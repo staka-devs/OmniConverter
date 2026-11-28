@@ -65,9 +65,7 @@ class ConvertFlowE2E {
     fun 同梱したffmpegで動画から音声を取り出す() {
         val source = createDownload("$name.mp4", sampleVideo())
         val output = convertViaUi(source, "MP3", "$name.mp3")
-        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(3).also { s.read(it) } }
-        // MP3 は ID3 タグかフレーム同期で始まる
-        assertTrue(head.decodeToString() == "ID3" || head[0] == 0xFF.toByte(), "MP3 ではありません")
+        assertTrue(output.head(3).looksLikeMp3(), "MP3 ではありません")
     }
 
     @Test
@@ -90,7 +88,7 @@ class ConvertFlowE2E {
             compose.onAllNodes(hasText("$name.opus", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
         val output = findDownload("$name.opus").also { created += it }
-        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        val head = output.head(4)
         assertEquals("OggS", head.decodeToString())
     }
 
@@ -102,9 +100,7 @@ class ConvertFlowE2E {
                 .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
         }.toByteArray()
         val output = convertViaUi(createDownload("$name.png", png), "HEIC", "$name.heic")
-        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(12).also { s.read(it) } }
-        // HEIF は ftyp ボックスで始まる
-        assertEquals("ftyp", head.copyOfRange(4, 8).decodeToString())
+        assertTrue(output.head(12).looksLikeHeif(), "HEIF ではありません")
     }
 
     @Test
@@ -117,9 +113,7 @@ class ConvertFlowE2E {
             }
         }.toByteArray()
         val output = convertViaUi(createDownload("$name.zip", zip), "TAR.GZ", "$name.tar.gz")
-        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(2).also { s.read(it) } }
-        // gzip の識別子
-        assertEquals(listOf(0x1f.toByte(), 0x8b.toByte()), head.toList())
+        assertTrue(output.head(2).looksLikeGzip(), "gzip ではありません")
     }
 
     @Test
@@ -130,7 +124,7 @@ class ConvertFlowE2E {
                 .compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
         }.toByteArray()
         val output = convertViaUi(createDownload("$name.png", png), "WEBP", "$name.webp")
-        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(12).also { s.read(it) } }
+        val head = output.head(12)
         assertEquals("RIFF", head.copyOfRange(0, 4).decodeToString())
         assertEquals("WEBP", head.copyOfRange(8, 12).decodeToString())
     }
@@ -139,17 +133,16 @@ class ConvertFlowE2E {
     fun 同梱したmutoolでHTMLをPDFにする() {
         val html = "<html><body><p>こんにちは</p></body></html>".toByteArray()
         val output = convertViaUi(createDownload("$name.html", html), "PDF", "$name.pdf")
-        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        val head = output.head(4)
         assertEquals("%PDF", head.decodeToString())
     }
 
     @Test
     fun pandocとmutoolをつないでMarkdownをPDFにする() {
-        // API 32 以前の x86_64 エミュレータの ARM 変換では pandoc の静的バイナリが動かない。ADR-0011
-        org.junit.Assume.assumeFalse(Build.SUPPORTED_ABIS[0].startsWith("x86") && Build.VERSION.SDK_INT < 33)
+        assumeStaticBinariesRun()
         val md = "# 見出し\n\n本文です。\n".toByteArray()
         val output = convertViaUi(createDownload("$name.md", md), "PDF", "$name.pdf")
-        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        val head = output.head(4)
         assertEquals("%PDF", head.decodeToString())
     }
 
@@ -160,18 +153,39 @@ class ConvertFlowE2E {
 
         compose.onNodeWithText(context.getString(R.string.pick_files)).performClick()
         compose.onNodeWithText(context.getString(R.string.file_count, 1)).assertExists()
-        // 変換先が多いと一覧の外にあり、カテゴリ名と同じ文字のこともあるので、押せる要素まで送ってから押す
+        selectTarget(target)
+        compose.onNodeWithText(context.getString(R.string.convert_to, target)).performClick()
+
+        waitUntilQueueShows(outputName)
+        return findDownload(outputName).also { created += it }
+    }
+
+    /** 変換先が多いと一覧の外にあり、カテゴリ名と同じ文字のこともあるので、押せる要素まで送ってから押す */
+    private fun selectTarget(target: String) {
         val chip = hasText(target) and androidx.compose.ui.test.hasClickAction()
         compose.onNode(androidx.compose.ui.test.hasScrollAction()).performScrollToNode(chip)
         compose.onNode(chip).performClick()
-        compose.onNodeWithText(context.getString(R.string.convert_to, target)).performClick()
-
-        // 完了するとキューに出力ファイル名が出る
-        compose.waitUntil(timeoutMillis = 120_000) {
-            compose.onAllNodes(hasText(outputName, substring = true)).fetchSemanticsNodes().isNotEmpty()
-        }
-        return findDownload(outputName).also { created += it }
     }
+
+    /** 変換が終わるとキューに出力ファイル名が出る */
+    private fun waitUntilQueueShows(outputName: String) = compose.waitUntil(timeoutMillis = 120_000) {
+        compose.onAllNodes(hasText(outputName, substring = true)).fetchSemanticsNodes().isNotEmpty()
+    }
+
+    /** API 32 以前の x86_64 エミュレータの ARM 変換では、pandoc の静的バイナリが動かない。ADR-0011 */
+    private fun assumeStaticBinariesRun() =
+        org.junit.Assume.assumeFalse(Build.SUPPORTED_ABIS[0].startsWith("x86") && Build.VERSION.SDK_INT < 33)
+
+    private fun Uri.head(size: Int): ByteArray =
+        context.contentResolver.openInputStream(this)!!.use { s -> ByteArray(size).also { s.read(it) } }
+
+    /** MP3 は ID3 タグかフレーム同期で始まる */
+    private fun ByteArray.looksLikeMp3() = decodeToString(0, 3) == "ID3" || this[0] == 0xFF.toByte()
+
+    /** HEIF は先頭の箱が ftyp */
+    private fun ByteArray.looksLikeHeif() = decodeToString(4, 8) == "ftyp"
+
+    private fun ByteArray.looksLikeGzip() = this[0] == 0x1f.toByte() && this[1] == 0x8b.toByte()
 
     /** 同梱した ffmpeg で 1 秒の動画を作る */
     private fun sampleVideo(): ByteArray {
