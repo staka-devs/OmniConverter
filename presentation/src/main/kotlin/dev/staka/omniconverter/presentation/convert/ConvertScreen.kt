@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.IntentCompat
 import dev.staka.omniconverter.domain.model.FileRef
 import dev.staka.omniconverter.domain.model.Format
 import dev.staka.omniconverter.domain.model.FormatCategory
@@ -46,6 +48,8 @@ fun ConvertScreen(
     onSelect: (Format) -> Unit,
     onClear: () -> Unit,
     onConvert: () -> Unit,
+    outputDir: FileRef? = null,
+    onOutputDir: (FileRef?) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -53,6 +57,9 @@ fun ConvertScreen(
         if (uris.isNotEmpty()) onFilesPicked(uris.map { context.toFileRef(it) })
     }
     val pick = { picker.launch(arrayOf("*/*")) }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) onOutputDir(FileRef(uri.toString(), context.treeName(uri)))
+    }
 
     if (state.files.isEmpty()) {
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -111,10 +118,28 @@ fun ConvertScreen(
                 }
             }
         }
+        // 出力先は変換ボタンのすぐ上に置き、何をどこへ出すかを一目で分かるようにする
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { folderPicker.launch(null) }, modifier = Modifier.weight(1f)) {
+                Icon(painterResource(R.drawable.ic_folder), contentDescription = stringResource(R.string.output_dir))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    outputDir?.name ?: stringResource(R.string.default_output_dir),
+                    maxLines = 1,
+                    overflow = TextOverflow.MiddleEllipsis,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (outputDir != null) {
+                IconButton(onClick = { onOutputDir(null) }) {
+                    Icon(painterResource(R.drawable.ic_close), contentDescription = stringResource(R.string.reset_output_dir))
+                }
+            }
+        }
         Button(
             onClick = onConvert,
             enabled = state.selected != null,
-            modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp).height(56.dp),
         ) {
             Text(
                 state.selected?.let { stringResource(R.string.convert_to, it.label()) } ?: stringResource(R.string.tab_convert),
@@ -136,10 +161,34 @@ fun FormatCategory.label() = when (this) {
 }
 
 /** バックグラウンドの変換で後から読めるよう、永続的な読み取り権限を取る */
-private fun Context.toFileRef(uri: Uri): FileRef {
+internal fun Context.toFileRef(uri: Uri): FileRef {
     runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
     val name = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
         if (c.moveToFirst()) c.getString(0) else null
     }
     return FileRef(uri.toString(), name ?: uri.lastPathSegment ?: "file")
+}
+
+/** 選んだフォルダの表示名。取れなければ URI の末尾を使う */
+private fun Context.treeName(tree: Uri): String {
+    val doc = android.provider.DocumentsContract.buildDocumentUriUsingTree(tree, android.provider.DocumentsContract.getTreeDocumentId(tree))
+    return contentResolver.query(doc, arrayOf(android.provider.DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)
+        ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        ?: tree.lastPathSegment.orEmpty()
+}
+
+/** 他のアプリから共有されたファイル。読み取り権限は一時的なので、受け取ったらすぐ写す */
+fun Context.sharedFiles(intent: Intent?): List<FileRef> {
+    intent ?: return emptyList()
+    val uris = when (intent.action) {
+        Intent.ACTION_SEND -> listOfNotNull(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java))
+        Intent.ACTION_SEND_MULTIPLE -> IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java).orEmpty()
+        else -> emptyList()
+    }
+    return uris.map { uri ->
+        val name = runCatching {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }.getOrNull()
+        FileRef(uri.toString(), name ?: uri.lastPathSegment ?: "file")
+    }
 }

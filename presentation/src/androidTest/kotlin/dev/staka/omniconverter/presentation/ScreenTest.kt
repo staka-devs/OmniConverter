@@ -81,4 +81,45 @@ class ScreenTest {
         compose.onNodeWithText(str(R.string.queue_empty)).assertExists()
         compose.onNodeWithContentDescription(str(R.string.clear_finished)).assertIsNotEnabled()
     }
+
+    private fun commandScreen(
+        state: dev.staka.omniconverter.presentation.command.CommandUiState,
+        presets: List<dev.staka.omniconverter.domain.model.Preset> = emptyList(),
+        onApply: (dev.staka.omniconverter.domain.model.Preset) -> Unit = {},
+        onDelete: (dev.staka.omniconverter.domain.model.Preset) -> Unit = {},
+    ) = compose.setContent {
+        dev.staka.omniconverter.presentation.command.CommandScreen(state, presets, {}, {}, {}, {}, onApply, {}, onDelete, {})
+    }
+
+    @Test
+    fun コマンドの誤りを入力欄の下に出す() {
+        val engine = dev.staka.omniconverter.domain.model.EngineId("ffmpeg")
+        commandScreen(
+            dev.staka.omniconverter.presentation.command.CommandUiState(
+                engines = listOf(engine), engine = engine, text = "-i x",
+                error = dev.staka.omniconverter.application.CommandError.MissingInput,
+            ),
+        )
+        compose.onNodeWithText(str(R.string.error_input)).assertExists()
+        // ファイルを選ぶまでは実行できない
+        compose.onNodeWithText(str(R.string.run)).assertIsNotEnabled()
+    }
+
+    @Test
+    fun プリセットを押すと呼び出し削除アイコンで消す() {
+        val engine = dev.staka.omniconverter.domain.model.EngineId("ffmpeg")
+        val preset = dev.staka.omniconverter.domain.model.Preset(
+            "p", "音声だけ", dev.staka.omniconverter.domain.model.RawCommand(engine, listOf("{input}", "{output}"), "mp3"),
+        )
+        var applied: String? = null
+        var deleted: String? = null
+        commandScreen(
+            dev.staka.omniconverter.presentation.command.CommandUiState(engines = listOf(engine), engine = engine),
+            listOf(preset), { applied = it.id }, { deleted = it.id },
+        )
+        compose.onNodeWithText("音声だけ").performClick()
+        compose.onNodeWithContentDescription(str(R.string.delete_preset, "音声だけ")).performClick()
+        assertEquals("p", applied)
+        assertEquals("p", deleted)
+    }
 }

@@ -52,7 +52,32 @@ class ViewModelTest {
     @After
     fun tearDown() = Dispatchers.resetMain()
 
-    private fun convertVm() = ConvertViewModel(GetAvailableTargets(planner), EnqueueConversions(repo, scheduler))
+    private val settings = MemorySettings()
+    private fun convertVm() = ConvertViewModel(
+        GetAvailableTargets(planner), EnqueueConversions(repo, scheduler),
+        dev.staka.omniconverter.application.RetainSharedFiles(NoFiles),
+        dev.staka.omniconverter.application.ObserveOutputDir(settings),
+        dev.staka.omniconverter.application.SetOutputDir(settings),
+    )
+
+    @Test
+    fun 共有されたファイルは写しを選択に入れる() {
+        val vm = convertVm()
+        vm.receiveShared(listOf(FileRef("content://share/1", "a.png")))
+        assertEquals(listOf("kept:content://share/1"), vm.state.value.files.map { it.uri })
+        assertEquals(listOf("jpg", "webp"), vm.state.value.targets.map { it.id })
+    }
+
+    @Test
+    fun 出力先を選び既定に戻せる() {
+        val vm = convertVm()
+        val collector = CoroutineScope(Dispatchers.Main).launch { vm.outputDir.collect {} }
+        vm.chooseOutputDir(FileRef("content://tree/x", "写真"))
+        assertEquals("写真", vm.outputDir.value?.name)
+        vm.chooseOutputDir(null)
+        assertNull(vm.outputDir.value)
+        collector.cancel()
+    }
 
     @Test
     fun ファイルを選ぶと変換先が並ぶ() {
@@ -87,7 +112,7 @@ class ViewModelTest {
 
     @Test
     fun キューでキャンセルと完了の消去ができる() {
-        val vm = QueueViewModel(ObserveJobs(repo), CancelJob(repo, scheduler), ClearFinishedJobs(repo))
+        val vm = QueueViewModel(ObserveJobs(repo), CancelJob(repo, scheduler), ClearFinishedJobs(repo, NoFiles))
         val src = FileRef("u", "a.png")
         repo.state.value = listOf(
             ConversionJob("run", src, Formats.of("jpg"), status = JobStatus.RUNNING),
@@ -121,6 +146,24 @@ private class MemoryRepository : ConversionJobRepository {
     }
     override suspend fun delete(id: String) {
         state.value = state.value - id
+    }
+}
+
+/** 写しを作らないファイル操作。キューの消去で呼ばれる */
+private object NoFiles : dev.staka.omniconverter.domain.port.FileGateway {
+    override suspend fun importToWorkspace(source: FileRef, workDir: Path) = error("unused")
+    override suspend fun export(file: Path, name: String) = error("unused")
+    override suspend fun newWorkDir() = error("unused")
+    override suspend fun deleteWorkDir(dir: Path) {}
+    override suspend fun retain(source: FileRef) = source.copy(uri = "kept:${source.uri}")
+    override suspend fun release(source: FileRef) {}
+}
+
+private class MemorySettings : dev.staka.omniconverter.domain.port.SettingsRepository {
+    private val dir = MutableStateFlow<FileRef?>(null)
+    override fun outputDir() = dir
+    override suspend fun setOutputDir(dir: FileRef?) {
+        this.dir.value = dir
     }
 }
 

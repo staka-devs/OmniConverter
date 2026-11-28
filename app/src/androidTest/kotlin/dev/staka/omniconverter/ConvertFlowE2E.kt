@@ -13,6 +13,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intending
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
@@ -67,6 +68,30 @@ class ConvertFlowE2E {
         val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(3).also { s.read(it) } }
         // MP3 は ID3 タグかフレーム同期で始まる
         assertTrue(head.decodeToString() == "ID3" || head[0] == 0xFF.toByte(), "MP3 ではありません")
+    }
+
+    @Test
+    fun コマンド画面で手書きのffmpegコマンドを実行する() {
+        val source = createDownload("$name.mp4", sampleVideo())
+        intending(hasAction(Intent.ACTION_OPEN_DOCUMENT))
+            .respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().setData(source)))
+
+        val tab = context.getString(R.string.tab_command)
+        compose.onNode(androidx.compose.ui.test.hasText(tab) and androidx.compose.ui.test.isSelectable()).performClick()
+        compose.onNodeWithText("ffmpeg").performClick()
+        compose.onNode(androidx.compose.ui.test.hasSetTextAction() and hasText(context.getString(R.string.command_label)))
+            .performTextInput("-i {input} -vn -c:a libopus -b:a 64k {output}")
+        compose.onNode(androidx.compose.ui.test.hasSetTextAction() and hasText(context.getString(R.string.extension_label)))
+            .performTextInput("opus")
+        compose.onNodeWithText(context.getString(R.string.pick_files)).performClick()
+        compose.onNodeWithText(context.getString(R.string.run)).performClick()
+
+        compose.waitUntil(timeoutMillis = 120_000) {
+            compose.onAllNodes(hasText("$name.opus", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+        val output = findDownload("$name.opus").also { created += it }
+        val head = context.contentResolver.openInputStream(output)!!.use { s -> ByteArray(4).also { s.read(it) } }
+        assertEquals("OggS", head.decodeToString())
     }
 
     @Test

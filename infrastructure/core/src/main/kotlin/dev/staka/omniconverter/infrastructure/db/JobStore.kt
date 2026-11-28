@@ -9,13 +9,17 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import dev.staka.omniconverter.domain.model.ConversionJob
 import dev.staka.omniconverter.domain.model.EngineId
 import dev.staka.omniconverter.domain.model.FileRef
 import dev.staka.omniconverter.domain.model.Formats
 import dev.staka.omniconverter.domain.model.JobStatus
+import dev.staka.omniconverter.domain.model.Preset
 import dev.staka.omniconverter.domain.model.RawCommand
 import dev.staka.omniconverter.domain.port.ConversionJobRepository
+import dev.staka.omniconverter.domain.port.PresetRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
@@ -64,16 +68,67 @@ interface JobDao {
     suspend fun requeueRunning()
 }
 
-/** Room を合成ルートから隠すための入口 */
-fun createJobDao(context: Context): JobDao = OmniDatabase.create(context).jobDao()
+/** Room を合成ルートから隠すための入口。1 つのデータベースから各リポジトリを作る */
+class Storage(context: Context) {
+    private val db = OmniDatabase.create(context)
+    val jobDao: JobDao get() = db.jobDao()
+    val presets: PresetRepository = RoomPresetRepository(db.presetDao())
+}
 
-@Database(entities = [JobEntity::class], version = 1, exportSchema = false)
+@Entity(tableName = "presets")
+data class PresetEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val engine: String,
+    val argsJson: String,
+    val extension: String,
+)
+
+@Dao
+interface PresetDao {
+    @Query("SELECT * FROM presets ORDER BY name")
+    fun observeAll(): Flow<List<PresetEntity>>
+
+    @Upsert
+    suspend fun upsert(preset: PresetEntity)
+
+    @Query("DELETE FROM presets WHERE id = :id")
+    suspend fun delete(id: String)
+}
+
+class RoomPresetRepository(private val dao: PresetDao) : PresetRepository {
+    override fun observeAll(): Flow<List<Preset>> = dao.observeAll().map { list ->
+        list.map { e ->
+            val args = JSONArray(e.argsJson)
+            Preset(e.id, e.name, RawCommand(EngineId(e.engine), List(args.length()) { args.getString(it) }, e.extension))
+        }
+    }
+
+    override suspend fun save(preset: Preset) = dao.upsert(
+        PresetEntity(preset.id, preset.name, preset.command.engine.value, JSONArray(preset.command.args).toString(), preset.command.outputExtension),
+    )
+
+    override suspend fun delete(id: String) = dao.delete(id)
+}
+
+@Database(entities = [JobEntity::class, PresetEntity::class], version = 2, exportSchema = false)
 abstract class OmniDatabase : RoomDatabase() {
     abstract fun jobDao(): JobDao
+    abstract fun presetDao(): PresetDao
 
     companion object {
+        /** 版 2 でプリセットの表を足した。ジョブの表には手を付けない */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `presets` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `engine` TEXT NOT NULL, " +
+                        "`argsJson` TEXT NOT NULL, `extension` TEXT NOT NULL, PRIMARY KEY(`id`))",
+                )
+            }
+        }
+
         fun create(context: Context): OmniDatabase =
-            Room.databaseBuilder(context, OmniDatabase::class.java, "omni.db").build()
+            Room.databaseBuilder(context, OmniDatabase::class.java, "omni.db").addMigrations(MIGRATION_1_2).build()
     }
 }
 

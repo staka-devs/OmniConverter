@@ -1,11 +1,16 @@
 package dev.staka.omniconverter.infrastructure.work
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
@@ -16,6 +21,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
 import dev.staka.omniconverter.application.ExecuteJob
+import dev.staka.omniconverter.domain.model.JobStatus
 import dev.staka.omniconverter.domain.port.JobScheduler
 import dev.staka.omniconverter.infrastructure.core.R
 import dev.staka.omniconverter.infrastructure.db.JobDao
@@ -49,17 +55,47 @@ class ConversionWorker(
         setForeground(getForegroundInfo())
         dao.requeueRunning()
         val semaphore = Semaphore(parallelism)
+        val processed = mutableListOf<String>()
         coroutineScope {
             while (true) {
                 val ids = dao.queuedIds()
                 if (ids.isEmpty()) break
+                processed += ids
                 ids.map { id ->
                     launch { semaphore.withPermit { executeJob(id) } }
                         .also { job -> running.put(id, job); job.invokeOnCompletion { running.remove(id) } }
                 }.joinAll()
             }
         }
+        notifyFinished(processed)
         return Result.success()
+    }
+
+    /** キューが空になったら、成功と失敗の件数を知らせる。押すとアプリを開く */
+    private suspend fun notifyFinished(ids: List<String>) {
+        if (ids.isEmpty()) return
+        val granted = Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (!granted) return
+        val statuses = ids.mapNotNull { dao.get(it)?.status }
+        val succeeded = statuses.count { it == JobStatus.SUCCEEDED.name }
+        val failed = statuses.count { it == JobStatus.FAILED.name }
+
+        val context = applicationContext
+        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(DONE_CHANNEL, context.getString(R.string.done_channel), NotificationManager.IMPORTANCE_DEFAULT),
+        )
+        val open = context.packageManager.getLaunchIntentForPackage(context.packageName)?.let {
+            PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        }
+        val notification = NotificationCompat.Builder(context, DONE_CHANNEL)
+            .setContentTitle(context.getString(R.string.done_title))
+            .setContentText(context.getString(R.string.done_text, succeeded, failed))
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(DONE_NOTIFICATION_ID, notification)
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -85,6 +121,8 @@ class ConversionWorker(
         const val UNIQUE_NAME = "conversion-queue"
         private const val CHANNEL = "conversion"
         private const val NOTIFICATION_ID = 1
+        private const val DONE_CHANNEL = "conversion-done"
+        private const val DONE_NOTIFICATION_ID = 2
     }
 }
 

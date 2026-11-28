@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import dev.staka.omniconverter.domain.model.FileRef
@@ -15,11 +16,16 @@ import java.nio.file.Path
 import java.util.UUID
 
 /**
- * SAF で選んだファイルを作業領域へ写し、結果を Download/OmniConverter へ書き出す。
+ * SAF で選んだファイルを作業領域へ写し、結果を出力先へ書き出す。
+ * 出力先は利用者が選んだフォルダ、選んでいなければ Download/OmniConverter とする。
  * shortcut: 入力を一度コピーするので大きな動画は容量を 2 倍使う。困ったら /proc/self/fd 経由の直接読みに切り替える
  */
-class SafFileGateway(private val context: Context) : FileGateway {
+class SafFileGateway(
+    private val context: Context,
+    private val outputDir: suspend () -> FileRef? = { null },
+) : FileGateway {
     private val workRoot = File(context.cacheDir, "work")
+    private val inbox = File(context.filesDir, "inbox")
 
     override suspend fun importToWorkspace(source: FileRef, workDir: Path): Path = withContext(Dispatchers.IO) {
         val target = File(workDir.toFile(), safeName(source.name))
@@ -29,7 +35,12 @@ class SafFileGateway(private val context: Context) : FileGateway {
         target.toPath()
     }
 
-    override suspend fun export(file: Path, name: String): FileRef = withContext(Dispatchers.IO) {
+    override suspend fun export(file: Path, name: String): FileRef {
+        val dir = outputDir()
+        return withContext(Dispatchers.IO) { if (dir != null) exportToTree(file, name, dir) else exportToDownloads(file, name) }
+    }
+
+    private fun exportToDownloads(file: Path, name: String): FileRef {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, safeName(name))
@@ -46,7 +57,24 @@ class SafFileGateway(private val context: Context) : FileGateway {
             resolver.delete(uri, null, null)
             throw e
         }
-        FileRef(uri.toString(), name)
+        return FileRef(uri.toString(), name)
+    }
+
+    /** 利用者が選んだフォルダに作る。同じ名前があれば DocumentsProvider が番号を付ける */
+    private fun exportToTree(file: Path, name: String, dir: FileRef): FileRef {
+        val resolver = context.contentResolver
+        val tree = Uri.parse(dir.uri)
+        val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        val uri = DocumentsContract.createDocument(resolver, parent, mimeOf(name), safeName(name))
+            ?: error("出力先に作れません: ${dir.name}")
+        try {
+            val out = resolver.openOutputStream(uri) ?: error("出力先を開けません")
+            out.use { o -> file.toFile().inputStream().use { it.copyTo(o) } }
+        } catch (e: Exception) {
+            DocumentsContract.deleteDocument(resolver, uri)
+            throw e
+        }
+        return FileRef(uri.toString(), name)
     }
 
     override suspend fun newWorkDir(): Path = withContext(Dispatchers.IO) {
@@ -55,6 +83,22 @@ class SafFileGateway(private val context: Context) : FileGateway {
 
     override suspend fun deleteWorkDir(dir: Path) {
         withContext(Dispatchers.IO) { dir.toFile().deleteRecursively() }
+    }
+
+    override suspend fun retain(source: FileRef): FileRef = withContext(Dispatchers.IO) {
+        val dir = File(inbox, UUID.randomUUID().toString()).apply { mkdirs() }
+        val target = File(dir, safeName(source.name))
+        val input = context.contentResolver.openInputStream(Uri.parse(source.uri))
+            ?: error("ファイルを開けません: ${source.name}")
+        input.use { i -> target.outputStream().use { i.copyTo(it) } }
+        FileRef(Uri.fromFile(target).toString(), source.name)
+    }
+
+    override suspend fun release(source: FileRef) {
+        val path = Uri.parse(source.uri).takeIf { it.scheme == "file" }?.path ?: return
+        // 写しの置き場の中だけを消す。外部から来た URI で別の場所を消さない
+        val file = File(path).canonicalFile
+        if (file.parentFile?.parentFile == inbox.canonicalFile) withContext(Dispatchers.IO) { file.parentFile?.deleteRecursively() }
     }
 
     private fun mimeOf(name: String): String =
