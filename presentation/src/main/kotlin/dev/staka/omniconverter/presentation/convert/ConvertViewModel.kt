@@ -35,9 +35,15 @@ class ConvertViewModel(
     /** null なら既定の Download/OmniConverter */
     val outputDir = observeOutputDir().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** 選び直しても、まだ選べる形式なら選択を保つ */
     fun setFiles(files: List<FileRef>) {
-        _state.value = ConvertUiState(files, getTargets(files))
+        val targets = getTargets(files)
+        _state.update { ConvertUiState(files, targets, it.selected?.takeIf { s -> s in targets }) }
     }
+
+    fun addFiles(files: List<FileRef>) = setFiles((_state.value.files + files).distinctBy { it.uri })
+
+    fun remove(file: FileRef) = setFiles(_state.value.files - file)
 
     /** 共有の読み取り権限はすぐ切れるので、先に手元へ写してから選択に入れる */
     fun receiveShared(files: List<FileRef>) {
