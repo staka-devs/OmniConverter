@@ -1,14 +1,21 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package dev.staka.omniconverter.presentation
 
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,6 +40,7 @@ import dev.staka.omniconverter.application.ObservePresets
 import dev.staka.omniconverter.application.RetainSharedFiles
 import dev.staka.omniconverter.application.SetOutputDir
 import dev.staka.omniconverter.domain.model.FileRef
+import dev.staka.omniconverter.domain.model.JobStatus
 import dev.staka.omniconverter.application.SavePreset
 import dev.staka.omniconverter.presentation.command.CommandScreen
 import dev.staka.omniconverter.presentation.command.CommandViewModel
@@ -83,22 +91,30 @@ fun OmniApp(useCases: UseCases, shared: List<FileRef> = emptyList()) {
         }
     }
 
+    val jobs by queue.jobs.collectAsStateWithLifecycle()
+    val activeJobs = jobs.count { it.status == JobStatus.QUEUED || it.status == JobStatus.RUNNING }
+
     OmniTheme {
         Scaffold(
+            contentWindowInsets = WindowInsets(0),
             bottomBar = {
-                NavigationBar {
+                ShortNavigationBar {
                     Tab.entries.forEach { t ->
-                        NavigationBarItem(
+                        ShortNavigationBarItem(
                             selected = tab == t.ordinal,
                             onClick = { tab = t.ordinal },
-                            icon = { Icon(painterResource(t.icon), contentDescription = null) },
+                            icon = {
+                                BadgedBox(badge = { if (t == Tab.QUEUE && activeJobs > 0) Badge { Text("$activeJobs") } }) {
+                                    Icon(painterResource(t.icon), contentDescription = null)
+                                }
+                            },
                             label = { Text(stringResource(t.label)) },
                         )
                     }
                 }
             },
         ) { padding ->
-            val modifier = Modifier.padding(padding)
+            val modifier = Modifier.padding(padding).consumeWindowInsets(padding)
             when (Tab.entries[tab]) {
                 Tab.CONVERT -> {
                     val state by convert.state.collectAsStateWithLifecycle()
@@ -107,7 +123,8 @@ fun OmniApp(useCases: UseCases, shared: List<FileRef> = emptyList()) {
                         outputDir = outputDir,
                         onOutputDir = convert::chooseOutputDir,
                         state = state,
-                        onFilesPicked = convert::setFiles,
+                        onFilesPicked = convert::addFiles,
+                        onRemove = convert::remove,
                         onSelect = convert::select,
                         onClear = convert::clear,
                         onConvert = {
@@ -118,7 +135,6 @@ fun OmniApp(useCases: UseCases, shared: List<FileRef> = emptyList()) {
                     )
                 }
                 Tab.QUEUE -> {
-                    val jobs by queue.jobs.collectAsStateWithLifecycle()
                     QueueScreen(jobs, queue::cancel, queue::clearFinished, modifier)
                 }
                 Tab.COMMAND -> {

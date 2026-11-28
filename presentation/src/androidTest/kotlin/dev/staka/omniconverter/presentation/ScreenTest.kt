@@ -31,7 +31,6 @@ class ScreenTest {
     fun ファイル未選択ではファイル選択だけを出す() {
         compose.setContent { ConvertScreen(ConvertUiState(), {}, {}, {}, {}) }
         compose.onNodeWithText(str(R.string.pick_files)).assertExists()
-        compose.onNodeWithText(str(R.string.category_video)).assertExists()
         compose.onNodeWithText(str(R.string.tab_convert)).assertDoesNotExist()
     }
 

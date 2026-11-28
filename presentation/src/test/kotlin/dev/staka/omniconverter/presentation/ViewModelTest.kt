@@ -88,6 +88,19 @@ class ViewModelTest {
     }
 
     @Test
+    fun ファイルを足し外しても選んだ形式を保つ() {
+        val vm = convertVm()
+        val a = FileRef("u1", "a.png")
+        vm.setFiles(listOf(a))
+        vm.select(Formats.of("webp"))
+        vm.addFiles(listOf(FileRef("u2", "b.png"), a))
+        assertEquals(listOf("u1", "u2"), vm.state.value.files.map { it.uri })
+        vm.remove(a)
+        assertEquals(listOf("u2"), vm.state.value.files.map { it.uri })
+        assertEquals("webp", vm.state.value.selected?.id)
+    }
+
+    @Test
     fun 変換するとジョブが登録され選択が消える() {
         val vm = convertVm()
         vm.setFiles(listOf(FileRef("u1", "a.png"), FileRef("u2", "b.png")))
