@@ -14,6 +14,21 @@ import kotlin.test.assertTrue
 class MupdfEngineTest {
     private val dir: File = Files.createTempDirectory("mupdf").toFile()
 
+    /**
+     * -o の次の引数へ書き込む mutool の代わり。
+     * [numberedPages] なら本物と同じく、名前の %d をページ番号 1 に置き換えて書く
+     */
+    private fun fakeMutool(numberedPages: Boolean) = File(dir, if (numberedPages) "mutool-paged" else "mutool").apply {
+        val target = if (numberedPages) "\"\$(echo \"\$2\" | sed 's/%d/1/')\"" else "\"\$2\""
+        val script = listOf(
+            "#!/bin/sh",
+            "while [ \"\$1\" != \"-o\" ]; do shift; done",
+            "echo written > $target",
+        )
+        writeText(script.joinToString("\n"))
+        setExecutable(true)
+    }
+
     private fun task(from: String, to: String) =
         ConversionTask(File(dir, "in.$from").toPath(), File(dir, "out.$to").toPath(), Formats.of(from), Formats.of(to))
 
@@ -40,35 +55,17 @@ class MupdfEngineTest {
 
     @Test
     fun ページ番号付きの先頭ページを求められた名前に移す() = runBlocking {
-        // mutool と同じく、-o の %d をページ番号に置き換えて書く
-        val fake = File(dir, "mutool-paged").apply {
-            val script = listOf(
-                "#!/bin/sh",
-                "while [ \"\$1\" != \"-o\" ]; do shift; done",
-                "echo png > \"\$(echo \"\$2\" | sed 's/%d/1/')\"",
-            )
-            writeText(script.joinToString("\n"))
-            setExecutable(true)
-        }
+        val fake = fakeMutool(numberedPages = true)
         val t = task("pdf", "png")
         val result = MupdfEngine({ fake }, NativeProcessRunner()).convert(t) {}
         assertTrue(result is ConversionResult.Success)
-        assertEquals("png", t.output.toFile().readText().trim())
+        assertEquals("written", t.output.toFile().readText().trim())
         assertTrue(!File(dir, "mutool-page1.png").exists())
     }
 
     @Test
     fun 出力ができれば成功() = runBlocking {
-        // -o の次の引数へ書き込む mutool の代わり
-        val fake = File(dir, "mutool").apply {
-            val script = listOf(
-                "#!/bin/sh",
-                "while [ \"\$1\" != \"-o\" ]; do shift; done",
-                "echo data > \"\$2\"",
-            )
-            writeText(script.joinToString("\n"))
-            setExecutable(true)
-        }
+        val fake = fakeMutool(numberedPages = false)
         val result = MupdfEngine({ fake }, NativeProcessRunner()).convert(task("pdf", "txt")) {}
         assertTrue(result is ConversionResult.Success)
     }

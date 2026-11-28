@@ -27,17 +27,26 @@ class PrefsSettingsRepository(private val context: Context) : SettingsRepository
     }
 
     override suspend fun setOutputDir(dir: FileRef?) {
-        val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        // 前のフォルダへの永続権限は返し、選んだフォルダの権限を取る
-        current()?.let { old -> runCatching { context.contentResolver.releasePersistableUriPermission(Uri.parse(old.uri), flags) } }
-        dir?.let { context.contentResolver.takePersistableUriPermission(Uri.parse(it.uri), flags) }
-        prefs.edit().apply {
-            if (dir == null) remove(KEY_URI).remove(KEY_NAME) else putString(KEY_URI, dir.uri).putString(KEY_NAME, dir.name)
-        }.apply()
+        current()?.let(::releaseAccess)
+        dir?.let(::takeAccess)
+        store(dir)
     }
+
+    private fun takeAccess(dir: FileRef) =
+        context.contentResolver.takePersistableUriPermission(Uri.parse(dir.uri), READ_WRITE)
+
+    /** 選ばれなくなったフォルダの永続権限を返す。すでに失っていても構わない */
+    private fun releaseAccess(dir: FileRef) {
+        runCatching { context.contentResolver.releasePersistableUriPermission(Uri.parse(dir.uri), READ_WRITE) }
+    }
+
+    private fun store(dir: FileRef?) = prefs.edit().apply {
+        if (dir == null) remove(KEY_URI).remove(KEY_NAME) else putString(KEY_URI, dir.uri).putString(KEY_NAME, dir.name)
+    }.apply()
 
     private companion object {
         const val KEY_URI = "output_dir_uri"
         const val KEY_NAME = "output_dir_name"
+        const val READ_WRITE = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
     }
 }

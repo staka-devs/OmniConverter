@@ -32,8 +32,8 @@ class LibarchiveEngine(
 
 object LibarchiveArgs {
     private val writable = listOf("zip", "tar", "tar.gz", "tar.xz", "tar.bz2", "tar.zst", "7z", "iso", "cpio").map(Formats::of)
-    // rar は読み込みだけに対応する
-    private val readable = writable + Formats.of("rar")
+    private val readOnly = listOf(Formats.of("rar"))
+    private val readable = writable + readOnly
 
     val capabilities: Set<Capability> = buildSet {
         readable.forEach { from -> (writable - from).forEach { add(Capability(from, it)) } }

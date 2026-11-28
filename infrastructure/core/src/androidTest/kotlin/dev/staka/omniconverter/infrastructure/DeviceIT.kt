@@ -93,15 +93,14 @@ class DeviceIT {
         assertEquals("共有", keptFile.readText())
         assertEquals(shared.name, kept.name)
 
-        // 写しの置き場の外を指す file URI は消さない
-        val outside = File(context.filesDir, "keep-me.txt").apply { writeText("x") }
-        files.release(dev.staka.omniconverter.domain.model.FileRef(Uri.fromFile(outside).toString(), outside.name))
-        assertTrue(outside.exists())
+        val outsideInbox = File(context.filesDir, "keep-me.txt").apply { writeText("x") }
+        files.release(dev.staka.omniconverter.domain.model.FileRef(Uri.fromFile(outsideInbox).toString(), outsideInbox.name))
+        assertTrue(outsideInbox.exists())
         files.release(shared)
 
         files.release(kept)
         assertFalse(keptFile.exists())
-        outside.delete()
+        outsideInbox.delete()
     }
 
     @Test
@@ -127,10 +126,7 @@ class DeviceIT {
             val worker = TestListenableWorkerBuilder<ConversionWorker>(context).setWorkerFactory(factory).build()
             assertTrue(worker.doWork() is ListenableWorker.Result.Success)
 
-            // キューが空になったら完了を知らせる。通知の登録は非同期なので、少し待つ
-            val manager = context.getSystemService(android.app.NotificationManager::class.java)
-            val posted = (1..50).any { manager.activeNotifications.any { n -> n.id == 2 } || run { delay(100); false } }
-            assertTrue(posted, "完了の通知がありません")
+            assertTrue(awaitNotification(ConversionWorker.DONE_NOTIFICATION_ID), "完了の通知がありません")
 
             listOf("j1", "j2").forEach { id ->
                 val job = repo.get(id)!!
@@ -142,6 +138,16 @@ class DeviceIT {
         } finally {
             db.close()
         }
+    }
+
+    /** 通知の登録は非同期なので、最大 5 秒待つ */
+    private suspend fun awaitNotification(id: Int): Boolean {
+        val manager = context.getSystemService(android.app.NotificationManager::class.java)
+        repeat(50) {
+            if (manager.activeNotifications.any { it.id == id }) return true
+            delay(100)
+        }
+        return false
     }
 
     /** txt を大文字にして md として出す */

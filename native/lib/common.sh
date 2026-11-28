@@ -9,14 +9,16 @@ PREFIX=$WORK/prefix
 OUT=$NATIVE_DIR/out
 JOBS=$(nproc)
 
-# minSdk に合わせる。ADR-0007
-API=29
+MIN_SDK=29
 TARGET=aarch64-linux-android
 TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
 SYSROOT=$TOOLCHAIN/sysroot
+PAGE_ALIGN_16K="-Wl,-z,max-page-size=16384"
+STATIC_CXX_RUNTIME="-static-libstdc++"
+STATIC_CXX_LIBS="-lc++_static -lc++abi"
 
-export CC="$TOOLCHAIN/bin/${TARGET}${API}-clang"
-export CXX="$TOOLCHAIN/bin/${TARGET}${API}-clang++"
+export CC="$TOOLCHAIN/bin/${TARGET}${MIN_SDK}-clang"
+export CXX="$TOOLCHAIN/bin/${TARGET}${MIN_SDK}-clang++"
 export AR=$TOOLCHAIN/bin/llvm-ar
 export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
 export STRIP=$TOOLCHAIN/bin/llvm-strip
@@ -24,18 +26,36 @@ export NM=$TOOLCHAIN/bin/llvm-nm
 export LD=$TOOLCHAIN/bin/ld.lld
 export CFLAGS="-O2 -fPIC -I$PREFIX/include"
 export CXXFLAGS="$CFLAGS"
-# 16 KB ページの端末でも読み込めるよう揃える。C++ 標準ライブラリは静的に入れ、実行ファイル単体で動かす
-export LDFLAGS="-L$PREFIX/lib -Wl,-z,max-page-size=16384 -static-libstdc++"
+export LDFLAGS="-L$PREFIX/lib $PAGE_ALIGN_16K $STATIC_CXX_RUNTIME"
 export PKG_CONFIG_LIBDIR=$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig
 export PKG_CONFIG_PATH=
 export PATH=$PREFIX/bin:$PATH
 
-mkdir -p "$DL" "$SRC" "$PREFIX/lib" "$OUT"
 # Android の pthread と rt は libc にある。-lpthread を求めるビルドのために空の静的ライブラリを置く
-for l in pthread rt; do [ -f "$PREFIX/lib/lib$l.a" ] || "$AR" rcs "$PREFIX/lib/lib$l.a"; done
+stub_libraries_merged_into_libc() {
+    for l in pthread rt; do [ -f "$PREFIX/lib/lib$l.a" ] || "$AR" rcs "$PREFIX/lib/lib$l.a"; done
+}
+
 # zlib は NDK の共有版を使う。pkg-config で探すビルドのために .pc だけを置く
-mkdir -p "$PREFIX/lib/pkgconfig"
-printf 'Name: zlib\nDescription: NDK zlib\nVersion: 1.3\nLibs: -lz\nCflags:\n' > "$PREFIX/lib/pkgconfig/zlib.pc"
+expose_ndk_zlib_to_pkg_config() {
+    mkdir -p "$PREFIX/lib/pkgconfig"
+    printf 'Name: zlib\nDescription: NDK zlib\nVersion: 1.3\nLibs: -lz\nCflags:\n' > "$PREFIX/lib/pkgconfig/zlib.pc"
+}
+
+# 古い config.sub は aarch64-linux-android を知らないので、ツールが持つ新しい版に差し替える
+refresh_config_scripts() {
+    cp /usr/share/misc/config.sub /usr/share/misc/config.guess "$1/" 2>/dev/null \
+        || cp /usr/share/automake-*/config.sub /usr/share/automake-*/config.guess "$1/"
+}
+
+# C++ のライブラリの .pc は共有版の C++ 標準ライブラリを求める。静的版を自分で足すビルドのために取り除く
+drop_shared_cxx_runtime_from_pc_files() {
+    sed -i -E 's/(^|[[:space:]])-l(stdc\+\+|c\+\+)([[:space:]]|$)/\1\3/g' "$PREFIX"/lib/pkgconfig/*.pc
+}
+
+mkdir -p "$DL" "$SRC" "$PREFIX/lib" "$OUT"
+stub_libraries_merged_into_libc
+expose_ndk_zlib_to_pkg_config
 
 log() { printf '\n==> %s\n' "$*"; }
 
@@ -70,7 +90,7 @@ cmake_build() {
     local dir=$1; shift
     cmake -S "$dir" -B "$dir/build-android" -G Ninja \
         -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-        -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-$API \
+        -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-$MIN_SDK \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PREFIX" -DCMAKE_PREFIX_PATH="$PREFIX" \
         -DCMAKE_FIND_ROOT_PATH="$PREFIX" -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON "$@"
     cmake --build "$dir/build-android" -j"$JOBS"

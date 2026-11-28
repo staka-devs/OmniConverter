@@ -34,16 +34,7 @@ class ExecuteJob(
 
         val workDir = files.newWorkDir()
         try {
-            val finished = coroutineScope {
-                // StateFlow は値を間引くので、保存が進捗の通知に追いつかなくても溜まらない
-                val progress = MutableStateFlow<Float?>(null)
-                val writer = launch { progress.filterNotNull().collect { save(running.copy(progress = it)) } }
-                try {
-                    run(running, workDir) { progress.value = it }
-                } finally {
-                    writer.cancel()
-                }
-            }
+            val finished = savingProgress(running) { report -> run(running, workDir, report) }
             save(finished)
         } catch (e: CancellationException) {
             withContext(NonCancellable) { save(running.copy(status = JobStatus.CANCELLED, progress = null)) }
@@ -97,6 +88,21 @@ class ExecuteJob(
         val args = substitute(command.args, input, output)
         return engine.runRaw(args, workDir, output) { p -> p.fraction?.let(onProgress) }
     }
+
+    /**
+     * [block] が報告する進捗を保存しながら実行する。
+     * 最新の値だけを保存するので、報告が保存より速くても溜まらない。
+     */
+    private suspend fun <T> savingProgress(job: ConversionJob, block: suspend (report: (Float) -> Unit) -> T): T =
+        coroutineScope {
+            val latest = MutableStateFlow<Float?>(null)
+            val saver = launch { latest.filterNotNull().collect { save(job.copy(progress = it)) } }
+            try {
+                block { latest.value = it }
+            } finally {
+                saver.cancel()
+            }
+        }
 
     private suspend fun save(job: ConversionJob) = repository.upsert(listOf(job))
 

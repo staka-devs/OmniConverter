@@ -42,20 +42,11 @@ class PresetStoreIT {
         }
     }
 
+    /** Room は移行後に表の形を検証するので、移行の SQL が実体と食い違えば開く時点で失敗する */
     @Test
     fun 版1のデータベースを移行してもジョブが残る() = runBlocking {
         val name = "migration-${System.nanoTime()}.db"
-        // 版 2 で作ってからプリセットの表を消し、版 1 の状態に戻す
-        Room.databaseBuilder(context, OmniDatabase::class.java, name).build().apply {
-            RoomJobRepository(jobDao()).upsert(listOf(ConversionJob("j", FileRef("u", "a.png"), Formats.of("jpg"))))
-            close()
-        }
-        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use {
-            it.execSQL("DROP TABLE presets")
-            it.version = 1
-        }
-
-        // Room は移行後に表の形を検証するので、移行の SQL が実体と食い違えばここで失敗する
+        createVersion1Database(name)
         val db = Room.databaseBuilder(context, OmniDatabase::class.java, name).addMigrations(OmniDatabase.MIGRATION_1_2).build()
         try {
             assertTrue(RoomJobRepository(db.jobDao()).get("j") != null)
@@ -64,6 +55,18 @@ class PresetStoreIT {
         } finally {
             db.close()
             context.deleteDatabase(name)
+        }
+    }
+
+    /** 版 2 で作ってからプリセットの表を消し、版 1 の状態に戻す */
+    private suspend fun createVersion1Database(name: String) {
+        Room.databaseBuilder(context, OmniDatabase::class.java, name).build().apply {
+            RoomJobRepository(jobDao()).upsert(listOf(ConversionJob("j", FileRef("u", "a.png"), Formats.of("jpg"))))
+            close()
+        }
+        SQLiteDatabase.openDatabase(context.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use {
+            it.execSQL("DROP TABLE presets")
+            it.version = 1
         }
     }
 }

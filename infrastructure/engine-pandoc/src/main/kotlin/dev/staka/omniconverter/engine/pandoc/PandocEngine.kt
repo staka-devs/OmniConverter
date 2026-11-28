@@ -42,7 +42,7 @@ object PandocArgs {
         "rst" to "rst", "org" to "org", "tex" to "latex", "ipynb" to "ipynb", "rtf" to "rtf",
     )
 
-    // 並び順が経路探索の優先順になる。HTML を先に置き、PDF へは HTML を経由させる
+    /** 並び順が経路探索の優先順になる。HTML を先に置き、PDF へは HTML を経由させる */
     private val writers = linkedMapOf(
         "html" to "html5", "md" to "markdown", "docx" to "docx", "odt" to "odt", "epub" to "epub3",
         "rst" to "rst", "org" to "org", "tex" to "latex", "ipynb" to "ipynb", "pptx" to "pptx",
@@ -58,9 +58,8 @@ object PandocArgs {
     fun command(task: ConversionTask): List<String> {
         val reader = readers[task.from.id] ?: error("pandoc は ${task.from.id} を読めません")
         val writer = writers[task.to.id] ?: error("pandoc は ${task.to.id} を出力できません")
-        // HTML は画像を埋め込んだ 1 ファイルにする
-        val html = if (task.to.id == "html") listOf("--embed-resources") else emptyList()
-        return listOf("-f", reader, "-t", writer, "--standalone") + html +
+        val singleFileHtml = if (task.to.id == "html") listOf("--embed-resources") else emptyList()
+        return listOf("-f", reader, "-t", writer, "--standalone") + singleFileHtml +
             listOf("-o", task.output.toString(), task.input.toString())
     }
 }

@@ -1,6 +1,7 @@
 package dev.staka.omniconverter.infrastructure.process
 
 import dev.staka.omniconverter.domain.model.ConversionResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -19,8 +20,7 @@ suspend fun NativeProcessRunner.convert(
     environment: Map<String, String> = emptyMap(),
     onLine: (String) -> Unit = {},
 ): ConversionResult {
-    // Android には /tmp が無いので、一時ファイルは作業ディレクトリに作らせる
-    val result = run(command, workDir, mapOf("TMPDIR" to workDir.path) + environment, onLine)
+    val result = run(command, workDir, tempDirIn(workDir) + environment, onLine)
     return if (result.exitCode == 0 && output.toFile().length() > 0) {
         ConversionResult.Success(output, result.log)
     } else {
@@ -28,44 +28,58 @@ suspend fun NativeProcessRunner.convert(
     }
 }
 
-/** 同梱した実行ファイルを起動する。呼び出し元がキャンセルされたらプロセスを強制終了する。ADR-0004 */
+/** Android には /tmp が無いので、作業ディレクトリを一時ディレクトリとして渡す */
+private fun tempDirIn(workDir: File) = mapOf("TMPDIR" to workDir.path)
+
+/** 同梱した実行ファイルを起動する。ADR-0004 */
 class NativeProcessRunner(private val maxLogLines: Int = 500) {
 
+    /**
+     * 標準出力と標準エラーをまとめて 1 行ずつ [onLine] に渡す。
+     * 読み取りはブロックするので別のコルーチンで行い、呼び出し元がキャンセルされたらプロセスを強制終了して読み取りを終わらせる。
+     */
     suspend fun run(
         command: List<String>,
         workDir: File,
         environment: Map<String, String> = emptyMap(),
         onLine: (String) -> Unit = {},
     ): ProcessResult = coroutineScope {
-        val process = ProcessBuilder(command)
+        val process = start(command, workDir, environment)
+        val output = async(Dispatchers.IO) { collectOutput(process, onLine) }
+        try {
+            output.await()
+        } finally {
+            if (process.isAlive) process.destroyForcibly()
+        }
+    }
+
+    private fun start(command: List<String>, workDir: File, environment: Map<String, String>): Process =
+        ProcessBuilder(command)
             .directory(workDir)
             .redirectErrorStream(true)
             .apply { environment().putAll(environment) }
             .start()
-        process.outputStream.close()
+            .also { it.outputStream.close() }
 
-        // 読み取りはブロックするので別コルーチンに分け、キャンセル時はプロセスを殺して読み取りを終わらせる
-        val reader = async(Dispatchers.IO) {
-            val log = ArrayDeque<String>()
-            try {
-                process.inputStream.bufferedReader().useLines { lines ->
-                    lines.forEach { line ->
-                        if (log.size == maxLogLines) log.removeFirst()
-                        log.addLast(line)
-                        onLine(line)
-                    }
-                }
-            } catch (e: IOException) {
-                // 強制終了でストリームが閉じられた場合は、失敗ではなくキャンセルとして伝える
-                ensureActive()
-                throw e
-            }
-            ProcessResult(process.waitFor(), log.joinToString("\n"))
-        }
+    /** 出力を読み切って末尾の [maxLogLines] 行を残す。強制終了でストリームが閉じられたら、失敗ではなくキャンセルとして伝える */
+    private fun CoroutineScope.collectOutput(process: Process, onLine: (String) -> Unit): ProcessResult {
+        val tail = ArrayDeque<String>()
         try {
-            reader.await()
-        } finally {
-            if (process.isAlive) process.destroyForcibly()
+            process.inputStream.bufferedReader().useLines { lines ->
+                lines.forEach { line ->
+                    tail.addKeepingLast(line, maxLogLines)
+                    onLine(line)
+                }
+            }
+        } catch (e: IOException) {
+            ensureActive()
+            throw e
         }
+        return ProcessResult(process.waitFor(), tail.joinToString("\n"))
+    }
+
+    private fun ArrayDeque<String>.addKeepingLast(line: String, max: Int) {
+        if (size == max) removeFirst()
+        addLast(line)
     }
 }

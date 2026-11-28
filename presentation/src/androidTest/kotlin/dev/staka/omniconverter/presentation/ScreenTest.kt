@@ -101,7 +101,16 @@ class ScreenTest {
             ),
         )
         compose.onNodeWithText(str(R.string.error_input)).assertExists()
-        // ファイルを選ぶまでは実行できない
+    }
+
+    @Test
+    fun ファイルを選ぶまでは実行できない() {
+        val engine = dev.staka.omniconverter.domain.model.EngineId("ffmpeg")
+        commandScreen(
+            dev.staka.omniconverter.presentation.command.CommandUiState(
+                engines = listOf(engine), engine = engine, text = "-i {input} {output}", extension = "mp3",
+            ),
+        )
         compose.onNodeWithText(str(R.string.run)).assertIsNotEnabled()
     }
 

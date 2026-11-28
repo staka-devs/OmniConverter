@@ -10,8 +10,7 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
-      # レシピと版が変わらない限り、前回の成果物を使う
-      - name: Restore native engines
+      - name: Restore native engines built from the same recipes and versions
         id: native-cache
         uses: actions/cache/restore@v4
         with:

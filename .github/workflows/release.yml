@@ -38,8 +38,7 @@ jobs:
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
 
-      # リリース前にも全検査を通す
-      - name: Build and test
+      - name: Run all checks and build the signed release APK
         env:
           OMNI_KEYSTORE: ${{ runner.temp }}/release.jks
           OMNI_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

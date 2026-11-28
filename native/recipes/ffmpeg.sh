@@ -1,9 +1,9 @@
 # GPL のコーデックを含む FFmpeg。ADR-0006
+# x265 は C++ なので、リンクは clang++ で行い C++ 標準ライブラリを静的に入れる。
+# ffprobe は作らない。長さは ffmpeg の出力から読めるので、30 MB の重複を避ける。
 for dep in x264 x265 libvpx dav1d opus lame libwebp; do need $dep; done
 
 fetch ffmpeg "$FFMPEG_URL" "$FFMPEG_SHA256"
-# x265 は C++ なので、リンクは clang++ で行い C++ 標準ライブラリを静的に入れる
-# ffprobe は作らない。長さは ffmpeg の出力から読めるので、30 MB の重複を避ける
 (cd "$SRC/ffmpeg" && ./configure \
     --prefix="$PREFIX" --enable-cross-compile --target-os=android --arch=aarch64 --cpu=armv8-a \
     --cc="$CC" --cxx="$CXX" --ld="$CXX" --ar="$AR" --ranlib="$RANLIB" --strip="$STRIP" --nm="$NM" \

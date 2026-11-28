@@ -95,10 +95,15 @@ class SafFileGateway(
     }
 
     override suspend fun release(source: FileRef) {
-        val path = Uri.parse(source.uri).takeIf { it.scheme == "file" }?.path ?: return
-        // 写しの置き場の中だけを消す。外部から来た URI で別の場所を消さない
-        val file = File(path).canonicalFile
-        if (file.parentFile?.parentFile == inbox.canonicalFile) withContext(Dispatchers.IO) { file.parentFile?.deleteRecursively() }
+        val dir = retainedCopyDir(source) ?: return
+        withContext(Dispatchers.IO) { dir.deleteRecursively() }
+    }
+
+    /** [retain] が作った写しのディレクトリ。写しの置き場の外を指す URI なら null を返し、消させない */
+    private fun retainedCopyDir(source: FileRef): File? {
+        val path = Uri.parse(source.uri).takeIf { it.scheme == "file" }?.path ?: return null
+        val dir = File(path).canonicalFile.parentFile ?: return null
+        return dir.takeIf { it.parentFile == inbox.canonicalFile }
     }
 
     private fun mimeOf(name: String): String =
